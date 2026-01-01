@@ -81,7 +81,12 @@ public class OrderEventsHandler {
             return Mono.error(new RuntimeException("Forced FAIL for testing"));
         }
 
-        return publishCompleted(envelope, ev, saved.id());
+                saved.markCompleted();
+                saved.markNotNew();
+
+                return checkoutRepository
+                                .save(saved)
+                                .then(publishCompleted(envelope, ev, saved.id()));
     }
 
     private Mono<Void> markFailed(CheckoutEntity saved, EventEnvelope<OrderCreated> envelope, OrderCreated ev, String reason) {

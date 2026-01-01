@@ -39,7 +39,9 @@
       </thead>
       <tbody>
         <tr v-for="row in rows" :key="row.orderId">
-          <td>{{ row.orderId }}</td>
+          <td>
+            <RouterLink :to="`/orders/${row.orderId}`">{{ row.orderId }}</RouterLink>
+          </td>
           <td>{{ row.customerId }}</td>
           <td>{{ formatDate(row.createdAt) }}</td>
           <td>{{ row.aggregatedStatus }}</td>

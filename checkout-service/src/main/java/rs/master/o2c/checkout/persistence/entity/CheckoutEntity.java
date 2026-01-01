@@ -32,6 +32,9 @@ public class CheckoutEntity implements Persistable<String> {
         @Column("created_at")
         private Instant createdAt;
 
+        @Column("updated_at")
+        private Instant updatedAt;
+
         @Transient
         private boolean isNew = true;
 
@@ -95,12 +98,22 @@ public class CheckoutEntity implements Persistable<String> {
                 return createdAt;
         }
 
+        public Instant updatedAt() {
+                return updatedAt;
+        }
+
         public void markFailed() {
                 this.status = CheckoutStatus.FAILED;
+                this.updatedAt = Instant.now();
         }
 
         public void markPending() {
                 this.status = CheckoutStatus.PENDING;
+        }
+
+        public void markCompleted() {
+                this.status = CheckoutStatus.COMPLETED;
+                this.updatedAt = Instant.now();
         }
 
 }
