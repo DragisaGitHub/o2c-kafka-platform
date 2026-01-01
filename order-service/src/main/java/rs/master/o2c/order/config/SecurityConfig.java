@@ -12,6 +12,7 @@ public class SecurityConfig {
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
+            .cors(cors -> {})
                 .authorizeExchange(exchange -> exchange
                         .pathMatchers("/orders/**").permitAll()
                         .pathMatchers("/actuator/**").permitAll()
