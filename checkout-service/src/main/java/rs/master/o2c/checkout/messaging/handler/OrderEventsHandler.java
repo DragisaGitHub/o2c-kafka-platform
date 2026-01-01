@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import rs.master.o2c.checkout.kafka.CheckoutEventPublisher;
+import rs.master.o2c.checkout.kafka.PaymentRequestPublisher;
 import rs.master.o2c.checkout.persistence.entity.CheckoutEntity;
 import rs.master.o2c.checkout.persistence.entity.InboxProcessedEntity;
 import rs.master.o2c.checkout.persistence.repository.CheckoutRepository;
@@ -21,6 +22,7 @@ import rs.master.o2c.events.checkout.CheckoutCompleted;
 import rs.master.o2c.events.checkout.CheckoutFailed;
 import rs.master.o2c.events.checkout.CheckoutStatus;
 import rs.master.o2c.events.order.OrderCreated;
+import rs.master.o2c.events.payment.PaymentRequested;
 
 @Component
 @RequiredArgsConstructor
@@ -30,6 +32,7 @@ public class OrderEventsHandler {
     private final CheckoutRepository checkoutRepository;
     private final InboxProcessedRepository inboxProcessedRepository;
     private final CheckoutEventPublisher checkoutEventPublisher;
+        private final PaymentRequestPublisher paymentRequestPublisher;
 
     public Mono<Void> handle(String payload) {
         return Mono.fromCallable(() ->
@@ -86,7 +89,8 @@ public class OrderEventsHandler {
 
                 return checkoutRepository
                                 .save(saved)
-                                .then(publishCompleted(envelope, ev, saved.id()));
+                                .then(publishCompleted(envelope, ev, saved.id()))
+                                .then(publishPaymentRequested(envelope, ev, saved.id()));
     }
 
     private Mono<Void> markFailed(CheckoutEntity saved, EventEnvelope<OrderCreated> envelope, OrderCreated ev, String reason) {
@@ -146,5 +150,35 @@ public class OrderEventsHandler {
                 )
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(json -> checkoutEventPublisher.publishCheckoutEvent(ev.orderId(), json));
+    }
+
+    private Mono<Void> publishPaymentRequested(EventEnvelope<OrderCreated> envelope, OrderCreated ev, String checkoutId) {
+        return Mono.fromCallable(() ->
+                        objectMapper.writeValueAsString(
+                                new EventEnvelope<>(
+                                        UUID.randomUUID(),
+                                        envelope.correlationId(),
+                                        envelope.messageId(),
+                                        EventTypes.PAYMENT_REQUESTED,
+                                        1,
+                                        Instant.now(),
+                                        ProducerNames.CHECKOUT_SERVICE,
+                                        ev.orderId(),
+                                        new PaymentRequested(
+                                                checkoutId,
+                                                ev.orderId(),
+                                                ev.customerId(),
+                                                ev.total().amount(),
+                                                ev.total().currency()
+                                        )
+                                )
+                        )
+                )
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMap(json -> paymentRequestPublisher.publishPaymentRequested(
+                        ev.orderId(),
+                        json,
+                        envelope.correlationId() == null ? null : envelope.correlationId().toString()
+                ));
     }
 }

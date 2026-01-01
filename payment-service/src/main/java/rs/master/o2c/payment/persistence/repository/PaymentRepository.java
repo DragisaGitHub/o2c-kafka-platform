@@ -13,6 +13,19 @@ public interface PaymentRepository extends ReactiveCrudRepository<PaymentEntity,
     Mono<Boolean> existsByCheckoutId(String checkoutId);
 
     @Query("""
+        select coalesce(max(attempt_no), 0)
+        from payment_attempt
+        where payment_id = :paymentId
+        """)
+    Mono<Integer> findMaxAttemptNo(String paymentId);
+
+    @Query("""
+        insert into payment_attempt (payment_id, attempt_no, status, reason, created_at)
+        values (:paymentId, :attemptNo, :status, :reason, current_timestamp)
+        """)
+    Mono<Integer> insertAttempt(String paymentId, int attemptNo, String status, String reason);
+
+    @Query("""
             select
                 id as paymentId,
                 status as status,

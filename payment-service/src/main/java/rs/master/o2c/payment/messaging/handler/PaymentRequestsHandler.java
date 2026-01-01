@@ -55,33 +55,73 @@ public class PaymentRequestsHandler {
         }
 
         PaymentRequested ev = envelope.payload();
-        String paymentId = UUID.randomUUID().toString();
 
-        PaymentEntity payment = new PaymentEntity(
-                paymentId,
-                ev.checkoutId(),
-                ev.orderId(),
-                ev.customerId(),
-                PaymentStatus.PENDING,
-                ev.amount(),
-                ev.currency(),
-                PaymentProvider.MOCK,
-                null,
-                null,
-                Instant.now(),
-                null
-        );
-
-        return paymentRepository
-                .save(payment)
+        return findOrCreatePayment(ev)
                 .flatMap(saved ->
-                        attemptPayment(saved, envelope, ev)
-                                .onErrorResume(ex ->
-                                        markFailed(saved, envelope, ev, ex.getMessage())
-                                )
+                        createAttempt(saved.id(), ev)
+                                .then(attemptPayment(saved, envelope, ev))
+                                .onErrorResume(ex -> markFailed(saved, envelope, ev, ex.getMessage()))
                 )
                 .onErrorResume(DataIntegrityViolationException.class, e -> Mono.empty())
                 .then();
+    }
+
+    private Mono<PaymentEntity> findOrCreatePayment(PaymentRequested ev) {
+        return paymentRepository
+                .findByCheckoutId(ev.checkoutId())
+                .map(existing -> {
+                    existing.markNotNew();
+                    return existing;
+                })
+                .switchIfEmpty(Mono.defer(() -> {
+                    String paymentId = UUID.randomUUID().toString();
+
+                    PaymentEntity payment = new PaymentEntity(
+                            paymentId,
+                            ev.orderId(),
+                            ev.checkoutId(),
+                            ev.customerId(),
+                            PaymentStatus.PENDING,
+                            ev.amount(),
+                            ev.currency(),
+                            PaymentProvider.MOCK,
+                            null,
+                            null,
+                            Instant.now(),
+                            null
+                    );
+
+                    return paymentRepository.save(payment);
+                }));
+    }
+
+    private Mono<Void> createAttempt(String paymentId, PaymentRequested ev) {
+        return paymentRepository
+                .findMaxAttemptNo(paymentId)
+                .defaultIfEmpty(0)
+                .map(max -> max + 1)
+                .flatMap(attemptNo -> {
+                    boolean fail = "FAIL".equalsIgnoreCase(ev.currency());
+                    String status = fail ? PaymentStatus.FAILED : PaymentStatus.SUCCEEDED;
+                    String reason = fail ? "Forced FAIL for testing" : null;
+
+                    return paymentRepository
+                            .insertAttempt(paymentId, attemptNo, status, reason)
+                            .then();
+                })
+                .onErrorResume(DuplicateKeyException.class, e ->
+                        // In case of concurrent inserts, recompute once and retry.
+                        paymentRepository
+                                .findMaxAttemptNo(paymentId)
+                                .defaultIfEmpty(0)
+                                .map(max -> max + 1)
+                                .flatMap(attemptNo -> {
+                                    boolean fail = "FAIL".equalsIgnoreCase(ev.currency());
+                                    String status = fail ? PaymentStatus.FAILED : PaymentStatus.SUCCEEDED;
+                                    String reason = fail ? "Forced FAIL for testing" : null;
+                                    return paymentRepository.insertAttempt(paymentId, attemptNo, status, reason).then();
+                                })
+                );
     }
 
     private Mono<Void> attemptPayment(PaymentEntity saved, EventEnvelope<PaymentRequested> envelope, PaymentRequested ev) {
