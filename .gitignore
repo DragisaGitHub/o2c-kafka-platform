@@ -1,6 +1,29 @@
-.gradle
-build
-out
-.idea
+# ===== Gradle / Java =====
+.gradle/
+build/
+out/
+target/
+
+# ===== IntelliJ / IDE =====
+.idea/
 *.iml
+.vscode/
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== Env =====
 .env
+.env.*
+
+# ===== Node / Frontend =====
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ===== Logs =====
+*.log
