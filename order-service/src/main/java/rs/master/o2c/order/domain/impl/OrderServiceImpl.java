@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Mono;
 import rs.master.o2c.events.AggregateTypes;
+import rs.master.o2c.events.CorrelationHeaders;
 import rs.master.o2c.events.EventEnvelope;
 import rs.master.o2c.events.order.OrderCreated;
 import rs.master.o2c.events.order.OrderStatus;
@@ -31,35 +32,44 @@ public class OrderServiceImpl implements OrderService {
     private final EventJsonSerializer serializer;
 
     @Override
+    @SuppressWarnings("null")
     public Mono<OrderEntity> create(CreateOrderRequest request) {
-        String orderId = UUID.randomUUID().toString();
+        return Mono.deferContextual(ctx -> {
+            String correlationId = ctx.getOrDefault(CorrelationHeaders.X_CORRELATION_ID, null);
+            if (correlationId == null || correlationId.isBlank()) {
+                return Mono.<OrderEntity>error(new IllegalStateException("Missing correlationId in request context"));
+            }
 
-        OrderEntity order = new OrderEntity(
+            String orderId = UUID.randomUUID().toString();
+
+            OrderEntity order = new OrderEntity(
                 orderId,
                 String.valueOf(request.customerId()),
                 OrderStatus.CREATED,
                 request.totalAmount(),
                 request.currency(),
-                Instant.now()
-        );
+                Instant.now(),
+                correlationId
+            );
 
-        return tx.transactional(
+            return tx.transactional(
                 orderRepository.save(order)
-                        .flatMap(saved -> {
-                            EventEnvelope<OrderCreated> envelope = mapper.toOrderCreatedEnvelope(saved);
+                    .flatMap(saved -> {
+                    EventEnvelope<OrderCreated> envelope = mapper.toOrderCreatedEnvelope(saved);
 
-                            OutboxEventEntity outbox = new OutboxEventEntity(
-                                    envelope.messageId().toString(),
-                                    AggregateTypes.ORDER,
-                                    saved.id(),
-                                    envelope.eventType(),
-                                    serializer.toJson(envelope),
-                                    Instant.now(),
-                                    null
-                            );
+                    OutboxEventEntity outbox = new OutboxEventEntity(
+                        envelope.messageId().toString(),
+                        AggregateTypes.ORDER,
+                        saved.id(),
+                        envelope.eventType(),
+                        serializer.toJson(envelope),
+                        Instant.now(),
+                        null
+                    );
 
-                            return outboxService.save(outbox).thenReturn(saved);
-                        })
-        );
+                    return outboxService.save(outbox).thenReturn(saved);
+                    })
+            );
+        });
     }
 }

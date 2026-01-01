@@ -1,5 +1,6 @@
 package rs.master.o2c.order.api;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,8 +21,12 @@ public class OrderController {
     private final OrderService orderService;
 
     @PostMapping
-    public Mono<CreateOrderResponse> create(@RequestBody CreateOrderRequest request) {
+    public Mono<CreateOrderResponse> create(@Valid @RequestBody CreateOrderRequest request) {
         return orderService.create(request)
-                .map(o -> new CreateOrderResponse(UUID.fromString(o.id())));
+                .map(o -> new CreateOrderResponse(
+                        UUID.fromString(o.id()),
+                        o.status(),
+                        o.correlationId()
+                ));
     }
 }

@@ -25,19 +25,23 @@ public class OrderEntity implements Persistable<String> {
 
         private String currency;
 
+        @Column("correlation_id")
+        private String correlationId;
+
         @Column("created_at")
         private Instant createdAt;
 
         @Transient
         private boolean isNew = true;
 
-        public OrderEntity(String id, String customerId, String status, BigDecimal totalAmount, String currency, Instant createdAt) {
+        public OrderEntity(String id, String customerId, String status, BigDecimal totalAmount, String currency, Instant createdAt, String correlationId) {
                 this.id = id;
                 this.customerId = customerId;
                 this.status = status;
                 this.totalAmount = totalAmount;
                 this.currency = currency;
                 this.createdAt = createdAt;
+                this.correlationId = correlationId;
         }
 
         @Override
@@ -54,6 +58,7 @@ public class OrderEntity implements Persistable<String> {
         public BigDecimal totalAmount() { return totalAmount; }
         public String currency() { return currency; }
         public Instant createdAt() { return createdAt; }
+        public String correlationId() { return correlationId; }
 
         public void setStatus(String status) {
                 this.status = status;
