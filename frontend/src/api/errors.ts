@@ -95,8 +95,7 @@ export async function normalizeApiError(err: unknown): Promise<NormalizedApiErro
     const message =
       pickFirstString(payload?.message) ??
       pickFirstString((isRecord(err) ? err.message : undefined)) ??
-      response.statusText ||
-      'Request failed'
+      (response.statusText || 'Request failed')
 
     return { code, message, status, correlationId }
   }
