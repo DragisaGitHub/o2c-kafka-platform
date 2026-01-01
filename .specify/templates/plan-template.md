@@ -31,7 +31,31 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- Boundaries:
+  - No cross-service database access.
+  - No shared domain/persistence models across services.
+  - Cross-service integration is REST + Kafka only.
+  - Frontend consumes REST only (no Kafka access).
+- DTO discipline:
+  - REST and Kafka payloads use boundary DTOs.
+  - Persistence entities are not used as API/event DTOs.
+- Contracts & naming:
+  - Any new/changed Kafka event has an explicit, versioned name.
+  - Any new/changed topic is explicit and versioned.
+  - Status values are canonical and mapped consistently for frontend.
+  - Contract changes include compatibility notes and migration plan if breaking.
+- Testing (non-negotiable):
+  - Business logic has unit tests.
+  - Kafka flows and DB interactions have integration tests.
+  - Unit vs integration vs E2E are clearly separated (Gradle source sets and/or JUnit tags).
+- Reliability:
+  - Kafka consumers are idempotent.
+  - Retry + dead-letter/quarantine handling is defined.
+  - Invalid message behavior is explicitly defined.
+- Observability & UX:
+  - Correlation IDs propagate through REST and Kafka.
+  - Logging is structured and includes correlation ID and stable error codes.
+  - Frontend states account for eventual consistency (pending/processing).
 
 ## Project Structure
 

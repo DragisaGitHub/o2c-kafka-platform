@@ -8,7 +8,10 @@ description: "Task list template for feature implementation"
 **Input**: Design documents from `/specs/[###-feature-name]/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
+**Tests**: Tests are NOT optional for this repository.
+- Unit tests are mandatory for business logic.
+- Integration tests are required for Kafka flows and database interactions.
+- E2E tests SHOULD be included for user journeys spanning frontend + multiple services.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -24,6 +27,14 @@ description: "Task list template for feature implementation"
 - **Web app**: `backend/src/`, `frontend/src/`
 - **Mobile**: `api/src/`, `ios/src/` or `android/src/`
 - Paths shown below assume single project - adjust based on plan.md structure
+
+For this repository (Gradle multi-module):
+
+- Service code: `<service>/src/main/java/...`
+- Unit tests: `<service>/src/test/java/...`
+- Integration tests: SHOULD be separated (preferred):
+  - Gradle source set: `<service>/src/integrationTest/java/...`, and a dedicated Gradle task, OR
+  - JUnit 5 tags (e.g., `@Tag("integration")`) + CI configuration that runs them separately.
 
 <!-- 
   ============================================================================
@@ -81,10 +92,10 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 1 (OPTIONAL - only if tests requested) ⚠️
 
-> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+> **NOTE: Write required tests for business logic and integrations**
 
-- [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T010 [P] [US1] Unit tests for business logic in <service>/src/test/java/...
+- [ ] T011 [P] [US1] Integration test covering Kafka/DB wiring in <service>/src/integrationTest/java/... (or tagged)
 
 ### Implementation for User Story 1
 
@@ -107,8 +118,8 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 2 (OPTIONAL - only if tests requested) ⚠️
 
-- [ ] T018 [P] [US2] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T019 [P] [US2] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T018 [P] [US2] Unit tests for business logic in <service>/src/test/java/...
+- [ ] T019 [P] [US2] Integration test covering Kafka/DB wiring in <service>/src/integrationTest/java/... (or tagged)
 
 ### Implementation for User Story 2
 
@@ -129,8 +140,8 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 3 (OPTIONAL - only if tests requested) ⚠️
 
-- [ ] T024 [P] [US3] Contract test for [endpoint] in tests/contract/test_[name].py
-- [ ] T025 [P] [US3] Integration test for [user journey] in tests/integration/test_[name].py
+- [ ] T024 [P] [US3] Unit tests for business logic in <service>/src/test/java/...
+- [ ] T025 [P] [US3] Integration test covering Kafka/DB wiring in <service>/src/integrationTest/java/... (or tagged)
 
 ### Implementation for User Story 3
 

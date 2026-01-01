@@ -90,6 +90,24 @@
 - **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
 - **FR-005**: System MUST [behavior, e.g., "log all security events"]
 
+### Constitution-Driven Constraints *(mandatory)*
+
+<!--
+  ACTION REQUIRED: Capture cross-cutting constraints required by the repository constitution.
+  These are enforceable engineering rules, not “nice to haves”.
+-->
+
+- Boundary discipline: APIs/events MUST use DTOs; persistence entities MUST NOT leak.
+- Service coupling: No cross-service DB access; integration is REST + Kafka only.
+- Contracts: Kafka events/topics/status values MUST be explicit and versioned; breaking changes MUST
+  include a migration plan.
+- Testing: Unit tests are mandatory for business logic; integration tests are required for Kafka/DB
+  interactions; test types must be distinguishable.
+- Observability: Correlation IDs must propagate through REST and Kafka; logs must be structured and
+  include stable error codes.
+- UX: Status and errors must be represented consistently across backend and frontend; UI must model
+  eventual consistency states.
+
 *Example of marking unclear requirements:*
 
 - **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
