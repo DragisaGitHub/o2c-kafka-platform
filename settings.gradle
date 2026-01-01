@@ -1,0 +1,6 @@
+rootProject.name = "o2c-kafka-platform"
+
+include("common-events")
+include("checkout-service")
+include("order-service")
+include("payment-service")

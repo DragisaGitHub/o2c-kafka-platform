@@ -1,0 +1,34 @@
+server:
+  port: 8082
+
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: order-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        enable.auto.commit: false
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+  r2dbc:
+    url: r2dbc:mysql://localhost:3308/order_db
+    username: root
+    password: root
+
+  flyway:
+    url: jdbc:mysql://localhost:3308/order_db
+    user: root
+    password: root
+    locations: classpath:db/migration
+
+logging:
+  level:
+    org.springframework.r2dbc.core: INFO
+    org.springframework.data.r2dbc: INFO
+    io.asyncer.r2dbc.mysql.QUERY: INFO
+    io.asyncer.r2dbc.mysql.PARAM: INFO

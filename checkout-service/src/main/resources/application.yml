@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: checkout-service
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

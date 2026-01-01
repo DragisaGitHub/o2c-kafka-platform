@@ -1,0 +1,28 @@
+server:
+  port: 8083
+
+spring:
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: payment-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        enable.auto.commit: false
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+  r2dbc:
+    url: r2dbc:mysql://localhost:3309/payment_db
+    username: root
+    password: root
+
+  flyway:
+    url: jdbc:mysql://localhost:3309/payment_db
+    user: root
+    password: root
+    locations: classpath:db/migration
