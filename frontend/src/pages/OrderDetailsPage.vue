@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 import { normalizeApiError } from '../api/errors'
 import { getOrderDetails } from '../api/detailsApi'
+import { retryPayment } from '../api/paymentApi'
 import { getCheckoutTimeline, getPaymentTimeline } from '../api/timelineApi'
 import { computeAggregatedStatus, mergeTimelines } from '../domain/timeline'
 
@@ -14,6 +15,8 @@ const error = ref<string | null>(null)
 const order = ref<Awaited<ReturnType<typeof getOrderDetails>> | null>(null)
 const checkoutTimeline = ref<Awaited<ReturnType<typeof getCheckoutTimeline>>>([])
 const paymentTimeline = ref<Awaited<ReturnType<typeof getPaymentTimeline>>>([])
+
+const retryingPayment = ref(false)
 
 let pollHandle: number | undefined
 
@@ -29,6 +32,15 @@ const aggregatedStatus = computed(() =>
     paymentTimeline: paymentTimeline.value,
   })
 )
+
+const latestPaymentEvent = computed(() => {
+  const events = paymentTimeline.value
+  if (!events.length) return null
+  return [...events].sort((a, b) => Date.parse(b.at) - Date.parse(a.at))[0]
+})
+
+const paymentStatus = computed(() => latestPaymentEvent.value?.status)
+const paymentFailureReason = computed(() => latestPaymentEvent.value?.failureReason ?? null)
 
 const timelineItems = computed(() =>
   mergeTimelines({
@@ -88,6 +100,19 @@ onMounted(async () => {
 onUnmounted(() => {
   stopPolling()
 })
+
+async function onRetryPayment(): Promise<void> {
+  if (retryingPayment.value) return
+  retryingPayment.value = true
+  try {
+    await retryPayment(props.orderId)
+  } catch (e) {
+    const err = await normalizeApiError(e)
+    error.value = `${err.message}${err.correlationId ? ` (correlationId: ${err.correlationId})` : ''}`
+  } finally {
+    retryingPayment.value = false
+  }
+}
 </script>
 
 <template>
@@ -144,7 +169,20 @@ onUnmounted(() => {
       </ol>
 
       <h3>Actions</h3>
-      <button type="button" disabled>Retry payment (US4)</button>
+      <div v-if="paymentStatus === 'FAILED'">
+        <p v-if="paymentFailureReason">
+          <strong>Payment failure reason:</strong>
+          <span>{{ paymentFailureReason }}</span>
+        </p>
+        <p v-else>
+          <strong>Payment failure reason:</strong>
+          <span>Unknown</span>
+        </p>
+
+        <button type="button" :disabled="retryingPayment" @click="onRetryPayment">
+          {{ retryingPayment ? 'Retrying…' : 'Retry payment' }}
+        </button>
+      </div>
     </div>
   </section>
 </template>
