@@ -22,7 +22,8 @@ export interface CreateOrderResponse {
   correlationId: string;
 }
 
-export type OrderStatus = 'CREATED' | 'ACTIVE' | 'COMPLETED' | 'FAILED';
+// Order-service statuses observed: CREATED, CONFIRMED, FAILED (anything else is treated as UNKNOWN in aggregation)
+export type OrderStatus = 'CREATED' | 'CONFIRMED' | 'FAILED' | 'UNKNOWN';
 
 // Checkout types
 export interface CheckoutStatus {
@@ -65,6 +66,7 @@ export interface RetryPaymentRequest {
 export type AggregatedStatus = 
   | 'FAILED' 
   | 'COMPLETED' 
+  | 'PAYMENT_PENDING'
   | 'CHECKOUT_PENDING' 
   | 'PROCESSING';
 

@@ -16,7 +16,7 @@ export function Navigation() {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <Link to="/" className="mr-8">
-              <h1 className="text-xl text-gray-900">Order-to-Cash Demo</h1>
+              <h1 className="text-xl text-gray-900">Order To Cash</h1>
             </Link>
             <div className="flex space-x-4">
               <Link
