@@ -13,7 +13,7 @@ Local ports:
 - order-service:   http://localhost:8082
 - checkout-service: http://localhost:8081
 - payment-service:  http://localhost:8083
-- frontend:         http://localhost:5173
+- web client:       http://localhost:5173
 #>
 
 Set-StrictMode -Version Latest

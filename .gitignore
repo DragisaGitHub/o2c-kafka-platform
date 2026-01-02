@@ -17,10 +17,7 @@ Thumbs.db
 .env
 .env.*
 
-# ===== Node / Frontend =====
-frontend/node_modules/
-frontend/dist/
-frontend/.vite/
+# ===== Node / Web client =====
 npm-debug.log*
 yarn-error.log*
 pnpm-debug.log*

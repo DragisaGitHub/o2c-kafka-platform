@@ -12,10 +12,11 @@ public class SecurityConfig {
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
-            .cors(cors -> {})
-                .authorizeExchange(exchange -> exchange
-                        .pathMatchers("/test/**").permitAll()
+                .cors(cors -> {})
+                .authorizeExchange(ex -> ex
                         .pathMatchers("/actuator/**").permitAll()
+                        .pathMatchers("/checkouts/**").permitAll()
+                        .pathMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .anyExchange().authenticated()
                 )
                 .build();

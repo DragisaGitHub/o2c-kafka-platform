@@ -10,8 +10,12 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import rs.master.o2c.payment.config.SecurityConfig;
 import rs.master.o2c.payment.observability.CorrelationIdWebFilter;
+import rs.master.o2c.payment.persistence.entity.PaymentAttemptEntity;
+import rs.master.o2c.payment.persistence.entity.PaymentEntity;
+import rs.master.o2c.payment.persistence.repository.PaymentAttemptRepository;
 import rs.master.o2c.payment.persistence.repository.PaymentRepository;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -28,6 +32,9 @@ class PaymentTimelineControllerTest {
     @MockBean
     private PaymentRepository paymentRepository;
 
+    @MockBean
+    private PaymentAttemptRepository paymentAttemptRepository;
+
     @Test
     void timeline_shouldReturn400_whenOrderIdInvalid() {
         webTestClient.get()
@@ -40,7 +47,7 @@ class PaymentTimelineControllerTest {
     void timeline_shouldReturn404_whenPaymentNotFound() {
         String orderId = UUID.randomUUID().toString();
 
-        when(paymentRepository.findTimelinePaymentByOrderId(orderId)).thenReturn(Mono.empty());
+        when(paymentRepository.findByOrderId(orderId)).thenReturn(Mono.empty());
 
         webTestClient.get()
                 .uri("/payments/{orderId}/timeline", orderId)
@@ -52,57 +59,32 @@ class PaymentTimelineControllerTest {
     void timeline_shouldReturnCreatedAttemptAndTerminalEvents_sortedByTime() {
         String orderId = UUID.randomUUID().toString();
 
-        PaymentRepository.PaymentTimelineRow payment = new PaymentRepository.PaymentTimelineRow() {
-            @Override
-            public String paymentId() {
-                return "pay-1";
-            }
+        PaymentEntity payment = new PaymentEntity(
+                "pay-1",
+                orderId,
+                "chk-1",
+                "cust-1",
+                "FAILED",
+                BigDecimal.ZERO,
+                "USD",
+                "mock",
+                null,
+                "PAYMENT_FAIL",
+                Instant.parse("2026-01-01T00:00:00Z"),
+                Instant.parse("2026-01-01T00:00:10Z")
+        );
 
-            @Override
-            public String status() {
-                return "FAILED";
-            }
+        PaymentAttemptEntity attempt1 = new PaymentAttemptEntity(
+                1L,
+                "pay-1",
+                1,
+                "FAILED",
+                "DECLINED",
+                Instant.parse("2026-01-01T00:00:05Z")
+        );
 
-            @Override
-            public String failureReason() {
-                return "PAYMENT_FAIL";
-            }
-
-            @Override
-            public Instant createdAt() {
-                return Instant.parse("2026-01-01T00:00:00Z");
-            }
-
-            @Override
-            public Instant updatedAt() {
-                return Instant.parse("2026-01-01T00:00:10Z");
-            }
-        };
-
-        PaymentRepository.PaymentAttemptRow attempt1 = new PaymentRepository.PaymentAttemptRow() {
-            @Override
-            public Integer attemptNo() {
-                return 1;
-            }
-
-            @Override
-            public String status() {
-                return "FAILED";
-            }
-
-            @Override
-            public String failureReason() {
-                return "DECLINED";
-            }
-
-            @Override
-            public Instant createdAt() {
-                return Instant.parse("2026-01-01T00:00:05Z");
-            }
-        };
-
-        when(paymentRepository.findTimelinePaymentByOrderId(orderId)).thenReturn(Mono.just(payment));
-        when(paymentRepository.findAttemptsByPaymentId("pay-1")).thenReturn(Flux.just(attempt1));
+        when(paymentRepository.findByOrderId(orderId)).thenReturn(Mono.just(payment));
+        when(paymentAttemptRepository.findByPaymentIdOrderByAttemptNoAsc("pay-1")).thenReturn(Flux.just(attempt1));
 
         webTestClient.get()
                 .uri("/payments/{orderId}/timeline", orderId)

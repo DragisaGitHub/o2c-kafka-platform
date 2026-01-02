@@ -39,7 +39,7 @@ Sync Impact Report
 	Kafka event contracts (schemas/types) and contract-level utilities (e.g., serialization helpers).
 - REST request/response models and Kafka event payloads MUST use boundary DTOs.
 	Persistence entities (e.g., JPA entities) MUST NOT be used as DTOs.
-- The frontend (Vue 3) MUST NOT access Kafka directly; it MUST consume backend services via REST.
+- The web client (browser UI) MUST NOT access Kafka directly; it MUST consume backend services via REST.
 
 Rationale: Prevents tight coupling and enables independent evolution.
 

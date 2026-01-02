@@ -29,8 +29,8 @@ public class PaymentStatusController {
     @GetMapping("/status")
     public Flux<PaymentStatusDto> status(@RequestParam("orderIds") String orderIds) {
         List<String> parsed = parseOrderIds(orderIds);
-        return paymentRepository.findStatusByOrderIdIn(parsed)
-                .map(r -> new PaymentStatusDto(r.orderId(), r.status(), r.failureReason()));
+        return paymentRepository.findByOrderIdIn(parsed)
+            .map(p -> new PaymentStatusDto(p.orderId(), p.status(), p.failureReason()));
     }
 
     private static List<String> parseOrderIds(String orderIds) {

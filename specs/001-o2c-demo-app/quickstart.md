@@ -6,7 +6,7 @@ This quickstart is copy/paste-friendly for a fresh clone on **Windows + PowerShe
 
 - Docker Desktop (for Kafka + MySQL containers)
 - JDK 21 (to run Spring Boot services)
-- Node.js 18+ (to run the Vue + Vite frontend)
+- Node.js 18+ (to run the web client)
 
 ## 1) Start Kafka + MySQL databases (Docker Compose)
 
@@ -59,19 +59,15 @@ Run each service in its own terminal (from the repository root).
 - order-service: `http://localhost:8082`
 - payment-service: `http://localhost:8083`
 
-## 3) Start the frontend (Vue + Vite)
+## 3) Start the web client (Vite)
 
 From the repository root:
 
 ```powershell
-cd frontend
+cd o2c-client
 
 # One-time install
 npm install
-
-# Optional: create a local env file for base URLs
-# (no secrets; safe to keep local)
-Copy-Item .env.example .env.local
 
 # Start Vite dev server
 npm run dev

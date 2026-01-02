@@ -105,4 +105,8 @@ public class PaymentEntity implements Persistable<String> {
     public BigDecimal totalAmount() { return totalAmount; }
     public String currency() { return currency; }
     public String provider() { return provider; }
+    public String providerPaymentId() { return providerPaymentId; }
+    public String failureReason() { return failureReason; }
+    public Instant createdAt() { return createdAt; }
+    public Instant updatedAt() { return updatedAt; }
 }

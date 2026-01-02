@@ -10,8 +10,11 @@ import reactor.core.publisher.Flux;
 import rs.master.o2c.payment.api.dto.PaymentStatusDto;
 import rs.master.o2c.payment.config.SecurityConfig;
 import rs.master.o2c.payment.observability.CorrelationIdWebFilter;
+import rs.master.o2c.payment.persistence.entity.PaymentEntity;
 import rs.master.o2c.payment.persistence.repository.PaymentRepository;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -65,41 +68,37 @@ class PaymentStatusControllerTest {
         String id1 = UUID.randomUUID().toString();
         String id2 = UUID.randomUUID().toString();
 
-        PaymentRepository.PaymentStatusRow r1 = new PaymentRepository.PaymentStatusRow() {
-            @Override
-            public String orderId() {
-                return id1;
-            }
+        PaymentEntity p1 = new PaymentEntity(
+                "p1",
+                id1,
+                "c1",
+                "cust1",
+                "FAILED",
+                BigDecimal.ZERO,
+                "USD",
+                "mock",
+                null,
+                "DECLINED",
+                Instant.now(),
+                Instant.now()
+        );
 
-            @Override
-            public String status() {
-                return "FAILED";
-            }
+        PaymentEntity p2 = new PaymentEntity(
+                "p2",
+                id2,
+                "c2",
+                "cust2",
+                "COMPLETED",
+                BigDecimal.ZERO,
+                "USD",
+                "mock",
+                null,
+                null,
+                Instant.now(),
+                Instant.now()
+        );
 
-            @Override
-            public String failureReason() {
-                return "DECLINED";
-            }
-        };
-
-        PaymentRepository.PaymentStatusRow r2 = new PaymentRepository.PaymentStatusRow() {
-            @Override
-            public String orderId() {
-                return id2;
-            }
-
-            @Override
-            public String status() {
-                return "COMPLETED";
-            }
-
-            @Override
-            public String failureReason() {
-                return null;
-            }
-        };
-
-        when(paymentRepository.findStatusByOrderIdIn(anyCollection())).thenReturn(Flux.just(r1, r2));
+        when(paymentRepository.findByOrderIdIn(anyCollection())).thenReturn(Flux.just(p1, p2));
 
         webTestClient.get()
                 .uri("/payments/status?orderIds={ids}", id1 + "," + id2)
@@ -118,6 +117,6 @@ class PaymentStatusControllerTest {
                     assertThat(second.failureReason()).isNull();
                 });
 
-        verify(paymentRepository).findStatusByOrderIdIn(anyCollection());
+        verify(paymentRepository).findByOrderIdIn(anyCollection());
     }
 }

@@ -12,6 +12,9 @@ public interface PaymentRepository extends ReactiveCrudRepository<PaymentEntity,
     Mono<PaymentEntity> findByCheckoutId(String checkoutId);
     Mono<Boolean> existsByCheckoutId(String checkoutId);
 
+    Mono<PaymentEntity> findByOrderId(String orderId);
+    Flux<PaymentEntity> findByOrderIdIn(Collection<String> orderIds);
+
     @Query("""
         select coalesce(max(attempt_no), 0)
         from payment_attempt
@@ -24,59 +27,4 @@ public interface PaymentRepository extends ReactiveCrudRepository<PaymentEntity,
         values (:paymentId, :attemptNo, :status, :reason, current_timestamp)
         """)
     Mono<Integer> insertAttempt(String paymentId, int attemptNo, String status, String reason);
-
-    @Query("""
-            select
-                id as paymentId,
-                status as status,
-                failure_reason as failureReason,
-                created_at as createdAt,
-                updated_at as updatedAt
-            from payment
-            where order_id = :orderId
-            """)
-    Mono<PaymentTimelineRow> findTimelinePaymentByOrderId(String orderId);
-
-    @Query("""
-            select
-                attempt_no as attemptNo,
-                status as status,
-                reason as failureReason,
-                created_at as createdAt
-            from payment_attempt
-            where payment_id = :paymentId
-            order by attempt_no asc
-            """)
-    Flux<PaymentAttemptRow> findAttemptsByPaymentId(String paymentId);
-
-    @Query("""
-            select
-                order_id as orderId,
-                status as status,
-                failure_reason as failureReason
-            from payment
-            where order_id in (:orderIds)
-            """)
-    Flux<PaymentStatusRow> findStatusByOrderIdIn(Collection<String> orderIds);
-
-    interface PaymentStatusRow {
-        String orderId();
-        String status();
-        String failureReason();
-    }
-
-    interface PaymentTimelineRow {
-        String paymentId();
-        String status();
-        String failureReason();
-        java.time.Instant createdAt();
-        java.time.Instant updatedAt();
-    }
-
-    interface PaymentAttemptRow {
-        Integer attemptNo();
-        String status();
-        String failureReason();
-        java.time.Instant createdAt();
-    }
 }

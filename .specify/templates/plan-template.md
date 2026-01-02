@@ -92,7 +92,7 @@ tests/
 ├── integration/
 └── unit/
 
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
+# [REMOVE IF UNUSED] Option 2: Web application
 backend/
 ├── src/
 │   ├── models/
@@ -100,7 +100,7 @@ backend/
 │   └── api/
 └── tests/
 
-frontend/
+o2c-client/
 ├── src/
 │   ├── components/
 │   ├── pages/

@@ -8,12 +8,12 @@
 Deliver an end-to-end Order-to-Cash demo experience on top of the existing Kafka-driven microservices platform:
 
 - Backend: existing Spring Boot (WebFlux) services (`order-service`, `checkout-service`, `payment-service`) integrating via REST + Kafka.
-- Frontend: new Vue 3 + TypeScript app that calls backend REST APIs only.
+- Web client: `o2c-client` (Vite + React + TypeScript) that calls backend REST APIs only.
 - UX: makes eventual consistency visible via polling, shows correlation IDs for traceability, and supports payment failure + idempotent retry.
 
 ## Integration approach (selected)
 
-**Selected**: **Option B** (frontend calls services directly)
+**Selected**: **Option B** (web client calls services directly)
 
 **Why**:
 
@@ -31,9 +31,9 @@ Deliver an end-to-end Order-to-Cash demo experience on top of the existing Kafka
 - `checkout-service`: `http://localhost:8081`
 - `payment-service`: `http://localhost:8083`
 
-## Contract mapping (frontend ↔ REST)
+## Contract mapping (web client ↔ REST)
 
-All frontend calls MUST use REST only. The frontend sets `X-Correlation-Id` on requests and services echo it back (and include it in error responses where applicable).
+All web client calls MUST use REST only. The web client sets `X-Correlation-Id` on requests and services echo it back (and include it in error responses where applicable).
 
 - **Create Order screen**
   - Calls `order-service` (`http://localhost:8082`)
@@ -70,9 +70,9 @@ All frontend calls MUST use REST only. The frontend sets `X-Correlation-Id` on r
 - Spring Boot (reactive/WebFlux)
 - Reactive Kafka client (project uses `ReactiveKafkaProducerTemplate` / reactive consumers)
 
-**Frontend**:
+**Web client**:
 
-- Vue 3 + TypeScript + Vite
+- React + TypeScript + Vite
 
 **Storage**:
 
@@ -139,11 +139,11 @@ order-service/
 checkout-service/
 payment-service/
 common-events/
-frontend/                # Vue app (to be added in Phase 1)
-dockers/
+o2c-client/              # Web client app
+docker/
 ```
 
-**Structure Decision**: Keep the existing multi-module backend as-is and add a single Vue 3 frontend at `frontend/` that calls the three services directly over REST.
+**Structure Decision**: Keep the existing multi-module backend as-is and use a single web client at `o2c-client/` that calls the three services directly over REST.
 
 ## Complexity Tracking
 

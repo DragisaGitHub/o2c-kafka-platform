@@ -176,7 +176,7 @@ function Get-ProjectStructure {
         [Parameter(Mandatory=$false)]
         [string]$ProjectType
     )
-    if ($ProjectType -match 'web') { return "backend/`nfrontend/`ntests/" } else { return "src/`ntests/" } 
+    if ($ProjectType -match 'web') { return "backend/`no2c-client/`ntests/" } else { return "src/`ntests/" } 
 }
 
 function Get-CommandsForLanguage { 

@@ -7,7 +7,7 @@
 - Order service: http://localhost:8082
 - Checkout service: http://localhost:8081
 - Payment service: http://localhost:8083
-- Frontend: http://localhost:5173
+- Web client: http://localhost:5173
 
 ## Cross-cutting
 
@@ -47,15 +47,15 @@
 
 ---
 
-## 4) Start frontend
+## 4) Start web client
 
-- [ ] In `frontend/`:
+- [ ] In `o2c-client/`:
   - Command: `npm install` (first time only)
   - Command: `npm run dev`
 - [ ] Open: http://localhost:5173
 
 **If it fails**
-- Ensure `.env` is configured with base URLs (see `frontend/.env.example`)
+- Ensure `.env` is configured with base URLs (see `o2c-client/.env.local`)
 - Confirm services are reachable from the browser
 
 ---

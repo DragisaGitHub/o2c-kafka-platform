@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import rs.master.o2c.payment.persistence.entity.PaymentEntity;
+import rs.master.o2c.payment.persistence.repository.PaymentAttemptRepository;
 import rs.master.o2c.payment.persistence.repository.PaymentRepository;
 
 import java.time.Instant;
@@ -19,9 +21,14 @@ import java.util.UUID;
 public class PaymentTimelineController {
 
     private final PaymentRepository paymentRepository;
+    private final PaymentAttemptRepository paymentAttemptRepository;
 
-    public PaymentTimelineController(PaymentRepository paymentRepository) {
+    public PaymentTimelineController(
+            PaymentRepository paymentRepository,
+            PaymentAttemptRepository paymentAttemptRepository
+    ) {
         this.paymentRepository = paymentRepository;
+        this.paymentAttemptRepository = paymentAttemptRepository;
     }
 
     @GetMapping("/{orderId}/timeline")
@@ -29,7 +36,7 @@ public class PaymentTimelineController {
         String normalizedOrderId = normalizeOrderId(orderId);
 
         return paymentRepository
-                .findTimelinePaymentByOrderId(normalizedOrderId)
+            .findByOrderId(normalizedOrderId)
                 .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "payment not found")))
                 .flatMapMany(payment -> {
                     Flux<TimelineEventDto> paymentCreated = Flux.just(
@@ -41,24 +48,27 @@ public class PaymentTimelineController {
                             )
                     );
 
-                    Flux<TimelineEventDto> attempts = paymentRepository
-                            .findAttemptsByPaymentId(payment.paymentId())
+                    Flux<TimelineEventDto> attempts = paymentAttemptRepository
+                            .findByPaymentIdOrderByAttemptNoAsc(payment.id())
                             .map(a -> new TimelineEventDto(
-                                    "PAYMENT_ATTEMPT_" + a.attemptNo(),
-                                    a.status(),
-                                    a.createdAt(),
-                                    a.failureReason()
+                                "PAYMENT_ATTEMPT_" + a.attemptNo(),
+                                a.status(),
+                                a.createdAt(),
+                                a.reason()
                             ));
 
                     Flux<TimelineEventDto> terminal = buildTerminalEvent(payment);
 
                     return Flux
                             .concat(paymentCreated, attempts, terminal)
-                            .sort(Comparator.comparing(TimelineEventDto::at));
+                            .sort(Comparator.comparing(
+                                TimelineEventDto::at,
+                                Comparator.nullsLast(Comparator.naturalOrder())
+                            ));
                 });
     }
 
-    private static Flux<TimelineEventDto> buildTerminalEvent(PaymentRepository.PaymentTimelineRow payment) {
+    private static Flux<TimelineEventDto> buildTerminalEvent(PaymentEntity payment) {
         Instant updatedAt = payment.updatedAt();
         if (updatedAt == null) {
             return Flux.empty();

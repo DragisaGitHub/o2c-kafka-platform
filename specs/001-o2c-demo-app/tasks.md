@@ -24,18 +24,18 @@ description: "Task list for implementing the O2C demo application"
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-**Purpose**: Finalize the plan, establish local dev docs, and scaffold the Vue frontend.
+**Purpose**: Finalize the plan, establish local dev docs, and scaffold the web client.
 
 - [ ] T001 Update specs/001-o2c-demo-app/plan.md to remove placeholders and document concrete ports/URLs (order 8082, checkout 8081, payment 8083) in specs/001-o2c-demo-app/plan.md
 - [ ] T002 Record the selected integration approach (Option B: frontend calls services directly) and the contract mapping in specs/001-o2c-demo-app/plan.md
-- [ ] T003 Create Vue 3 + TypeScript + Vite scaffold with routing in frontend/package.json (and frontend/vite.config.ts, frontend/src/main.ts)
-- [ ] T004 [P] Add environment template for local base URLs in frontend/.env.example
-- [ ] T005 [P] Add local run instructions (docker compose + services + frontend) in specs/001-o2c-demo-app/quickstart.md
+- [ ] T003 Create Vite + React + TypeScript scaffold with routing in o2c-client/package.json (and o2c-client/vite.config.ts, o2c-client/src/main.tsx)
+- [ ] T004 [P] Add environment template for local base URLs in o2c-client/.env.local
+- [ ] T005 [P] Add local run instructions (docker compose + services + web client) in specs/001-o2c-demo-app/quickstart.md
 - [ ] T006 [P] Add local CORS configuration for the frontend dev origin in order-service/src/main/java/rs/master/o2c/order/config/CorsConfig.java
 - [ ] T007 [P] Add local CORS configuration for the frontend dev origin in checkout-service/src/main/java/rs/master/o2c/checkout/config/CorsConfig.java
 - [ ] T008 [P] Add local CORS configuration for the frontend dev origin in payment-service/src/main/java/rs/master/o2c/payment/config/CorsConfig.java
 
-**Checkpoint**: `docker/docker-compose.local.yml` + services + `frontend` can run locally and the browser can call the services without CORS errors.
+**Checkpoint**: `docker/docker-compose.local.yml` + services + `o2c-client` can run locally and the browser can call the services without CORS errors.
 
 ---
 
@@ -43,9 +43,9 @@ description: "Task list for implementing the O2C demo application"
 
 **Purpose**: Cross-cutting platform concerns required by the constitution and the demo UX.
 
-- [ ] T009 Define frontend status types + aggregation + backend-to-UI mappings (including `SUCCEEDED`→`COMPLETED`) in frontend/src/domain/status.ts
-- [ ] T010 [P] Implement a typed HTTP client with correlation ID propagation in frontend/src/api/http.ts
-- [ ] T011 [P] Implement a structured API error normalizer in frontend/src/api/errors.ts
+- [ ] T009 Define UI status types + aggregation + backend-to-UI mappings (including `SUCCEEDED`→`COMPLETED`) in o2c-client/src/domain/status.ts
+- [ ] T010 [P] Implement a typed HTTP client with correlation ID propagation in o2c-client/src/api/httpClient.ts
+- [ ] T011 [P] Implement a structured API error normalizer in o2c-client/src/api/httpClient.ts
 - [ ] T012 Implement an `X-Correlation-Id` WebFilter that sets request/response correlation ID in order-service/src/main/java/rs/master/o2c/order/observability/CorrelationIdWebFilter.java
 - [ ] T013 Implement an `X-Correlation-Id` WebFilter that sets request/response correlation ID in checkout-service/src/main/java/rs/master/o2c/checkout/observability/CorrelationIdWebFilter.java
 - [ ] T014 Implement an `X-Correlation-Id` WebFilter that sets request/response correlation ID in payment-service/src/main/java/rs/master/o2c/payment/observability/CorrelationIdWebFilter.java
@@ -54,7 +54,7 @@ description: "Task list for implementing the O2C demo application"
 - [ ] T017 [P] Replace `System.out.println` with structured SLF4J logging (include correlationId where available) in checkout-service/src/main/java/rs/master/o2c/checkout/messaging/consumer/OrderEventsConsumer.java
 - [ ] T018 [P] Replace `System.out.println` with structured SLF4J logging (include correlationId where available) in payment-service/src/main/java/rs/master/o2c/payment/messaging/consumer/PaymentRequestsConsumer.java
 
-**Checkpoint**: Correlation IDs show up consistently in REST responses and logs; frontend has consistent error handling.
+**Checkpoint**: Correlation IDs show up consistently in REST responses and logs; the web client has consistent error handling.
 
 ---
 
@@ -76,9 +76,9 @@ description: "Task list for implementing the O2C demo application"
 - [ ] T023 [US1] Persist correlationId for later retrieval by adding `correlation_id` to `orders` in order-service/src/main/resources/db/migration/V3__orders_add_correlation_id.sql
 - [ ] T024 [US1] Add `correlationId` field plumbing to the order entity in order-service/src/main/java/rs/master/o2c/order/persistence/entity/OrderEntity.java
 - [ ] T025 [US1] Set order correlationId from request context during creation in order-service/src/main/java/rs/master/o2c/order/domain/impl/OrderServiceImpl.java
-- [ ] T026 [P] [US1] Create the Create Order page UI in frontend/src/pages/CreateOrderPage.vue
-- [ ] T027 [P] [US1] Add typed API client for create order in frontend/src/api/orderApi.ts
-- [ ] T028 [P] [US1] Add a minimal accessible form field component in frontend/src/components/FormField.vue
+- [ ] T026 [P] [US1] Create the Create Order page UI in o2c-client/src/pages/CreateOrder.tsx
+- [ ] T027 [P] [US1] Add typed API client for create order in o2c-client/src/api/orderService.ts
+- [ ] T028 [P] [US1] Add a minimal accessible form field component in o2c-client/src/components/
 
 **Checkpoint**: User Story 1 is complete and demoable.
 
@@ -107,9 +107,9 @@ description: "Task list for implementing the O2C demo application"
 - [ ] T038 [P] [US2] Add payment status DTOs (incl. failureReason) in payment-service/src/main/java/rs/master/o2c/payment/api/dto/PaymentStatusDto.java
 - [ ] T039 [US2] Implement `GET /payments/status?orderIds=` batch endpoint in payment-service/src/main/java/rs/master/o2c/payment/api/PaymentStatusController.java
 - [ ] T040 [US2] Add repository query methods for status lookups in payment-service/src/main/java/rs/master/o2c/payment/persistence/repository/PaymentRepository.java
-- [ ] T041 [US2] Implement Orders List page UI with filters and polling in frontend/src/pages/OrdersListPage.vue
-- [ ] T042 [P] [US2] Implement list state + polling refresh orchestration in frontend/src/state/ordersList.ts
-- [ ] T043 [P] [US2] Add typed clients for list + batch status in frontend/src/api/orderApi.ts and frontend/src/api/statusApi.ts
+- [ ] T041 [US2] Implement Orders List page UI with filters and polling in o2c-client/src/pages/Orders.tsx
+- [ ] T042 [P] [US2] Implement list state + polling refresh orchestration in o2c-client/src/
+- [ ] T043 [P] [US2] Add typed clients for list + batch status in o2c-client/src/api/
 
 **Checkpoint**: User Story 2 is complete and makes eventual consistency visible.
 
@@ -135,9 +135,9 @@ description: "Task list for implementing the O2C demo application"
 - [ ] T050 [US3] Ensure checkout marks COMPLETED (and updates timestamps) on success in checkout-service/src/main/java/rs/master/o2c/checkout/messaging/handler/OrderEventsHandler.java
 - [ ] T051 [P] [US3] Add checkout timeline endpoint based on `created_at/updated_at/status` in checkout-service/src/main/java/rs/master/o2c/checkout/api/CheckoutTimelineController.java
 - [ ] T052 [P] [US3] Add payment timeline endpoint based on `payment` + `payment_attempt` tables in payment-service/src/main/java/rs/master/o2c/payment/api/PaymentTimelineController.java
-- [ ] T053 [US3] Implement Order Details page UI (summary + correlationId + timeline + retry button slot) in frontend/src/pages/OrderDetailsPage.vue
-- [ ] T054 [P] [US3] Implement timeline merge/sort logic in frontend/src/domain/timeline.ts
-- [ ] T055 [P] [US3] Add typed clients for details + timelines in frontend/src/api/detailsApi.ts and frontend/src/api/timelineApi.ts
+- [ ] T053 [US3] Implement Order Details page UI (summary + correlationId + timeline + retry button slot) in o2c-client/src/pages/OrderDetails.tsx
+- [ ] T054 [P] [US3] Implement timeline merge/sort logic in o2c-client/src/domain/
+- [ ] T055 [P] [US3] Add typed clients for details + timelines in o2c-client/src/api/
 
 **Checkpoint**: User Story 3 is complete and traceable.
 
@@ -161,8 +161,8 @@ description: "Task list for implementing the O2C demo application"
 - [ ] T060 [US4] Add retry REST endpoint that enqueues a new `PaymentRequested` with stable `retryRequestId` in payment-service/src/main/java/rs/master/o2c/payment/api/PaymentRetryController.java
 - [ ] T061 [P] [US4] Add retry DTOs (request/response) in payment-service/src/main/java/rs/master/o2c/payment/api/dto/RetryPaymentRequest.java
 - [ ] T062 [US4] Persist retry request idempotency (unique) in payment-service/src/main/resources/db/migration/V2__payment_retry_idempotency.sql
-- [ ] T063 [P] [US4] Show payment failure reason and retry action in frontend/src/pages/OrderDetailsPage.vue
-- [ ] T064 [P] [US4] Add typed client for retry endpoint in frontend/src/api/paymentApi.ts
+- [ ] T063 [P] [US4] Show payment failure reason and retry action in o2c-client/src/pages/OrderDetails.tsx
+- [ ] T064 [P] [US4] Add typed client for retry endpoint in o2c-client/src/api/
 
 **Checkpoint**: User Story 4 is complete with idempotent retry behavior.
 
@@ -174,7 +174,7 @@ description: "Task list for implementing the O2C demo application"
 
 - [ ] T065 [P] Add a manual smoke checklist for the end-to-end demo in specs/001-o2c-demo-app/checklists/smoke.md
 - [ ] T066 Add a local demo script (curl commands) for US1–US4 in specs/001-o2c-demo-app/scripts/demo.ps1
-- [ ] T067 [P] Add basic accessibility checks (labels, focus, keyboard navigation) to frontend/src/components/StatusBadge.vue and frontend/src/components/ErrorBanner.vue
+- [ ] T067 [P] Add basic accessibility checks (labels, focus, keyboard navigation) to o2c-client/src/components/
 - [ ] T068 Add integration test coverage for Kafka flow (order→checkout→payment) using JUnit tags in payment-service/src/test/java/rs/master/o2c/payment/messaging/PaymentFlowIT.java
 
 ---
@@ -198,7 +198,7 @@ description: "Task list for implementing the O2C demo application"
 ### Parallel Opportunities
 
 - Tasks marked **[P]** can be worked on concurrently
-- After Phase 2 completes, backend endpoints and frontend pages can be built in parallel per story
+- After Phase 2 completes, backend endpoints and web client pages can be built in parallel per story
 
 ---
 
