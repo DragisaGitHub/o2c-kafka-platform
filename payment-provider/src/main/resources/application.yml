@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: payment-provider
+
+provider:
+  callbackDelayMs: ${PROVIDER_CALLBACK_DELAY_MS:5000}
+  webhookUrl: ${PAYMENT_WEBHOOK_URL:http://localhost:8083/webhooks/provider/payments}

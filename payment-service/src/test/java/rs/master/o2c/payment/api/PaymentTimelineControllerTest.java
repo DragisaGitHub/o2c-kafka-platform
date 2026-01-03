@@ -80,7 +80,9 @@ class PaymentTimelineControllerTest {
                 1,
                 "FAILED",
                 "DECLINED",
-                Instant.parse("2026-01-01T00:00:05Z")
+                null,
+                Instant.parse("2026-01-01T00:00:05Z"),
+                Instant.parse("2026-01-01T00:00:06Z")
         );
 
         when(paymentRepository.findByOrderId(orderId)).thenReturn(Mono.just(payment));

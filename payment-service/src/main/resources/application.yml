@@ -2,6 +2,11 @@ spring:
   application:
     name: payment-service
 
+payment:
+  provider:
+    enabled: ${PAYMENT_PROVIDER_ENABLED:true}
+    baseUrl: ${PAYMENT_PROVIDER_BASE_URL:http://localhost:8090}
+
 management:
   endpoints:
     web:
