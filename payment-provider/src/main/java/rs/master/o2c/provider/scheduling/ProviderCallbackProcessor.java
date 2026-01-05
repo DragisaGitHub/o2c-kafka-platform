@@ -2,6 +2,7 @@ package rs.master.o2c.provider.scheduling;
 
 import java.time.Duration;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
@@ -14,21 +15,12 @@ import rs.master.o2c.provider.config.ProviderProperties;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class ProviderCallbackProcessor {
 
     private final ProviderProperties properties;
     private final ProviderCallbackQueue queue;
     private final WebClient webhookWebClient;
-
-    public ProviderCallbackProcessor(
-            ProviderProperties properties,
-            ProviderCallbackQueue queue,
-            WebClient webhookWebClient
-    ) {
-        this.properties = properties;
-        this.queue = queue;
-        this.webhookWebClient = webhookWebClient;
-    }
 
     @EventListener(ApplicationReadyEvent.class)
     public void start() {

@@ -2,6 +2,11 @@ spring:
   application:
     name: payment-service
 
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: UTC
+
 payment:
   provider:
     enabled: ${PAYMENT_PROVIDER_ENABLED:true}
