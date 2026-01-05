@@ -80,10 +80,6 @@ public class OrderEventsHandler {
     }
 
     private Mono<Void> attemptCheckout(CheckoutEntity saved, EventEnvelope<OrderCreated> envelope, OrderCreated ev) {
-        if ("FAIL".equalsIgnoreCase(ev.total().currency())) {
-            return Mono.error(new RuntimeException("Forced FAIL for testing"));
-        }
-
                 saved.markCompleted();
                 saved.markNotNew();
 

@@ -17,12 +17,12 @@ spring:
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
   r2dbc:
-    url: r2dbc:mysql://localhost:3307/checkout_db
+    url: r2dbc:mysql://localhost:3307/checkout_db?serverZoneId=UTC
     username: root
     password: root
 
   flyway:
-    url: jdbc:mysql://localhost:3307/checkout_db
+    url: jdbc:mysql://localhost:3307/checkout_db?serverZoneId=UTC
     user: root
     password: root
     locations: classpath:db/migration

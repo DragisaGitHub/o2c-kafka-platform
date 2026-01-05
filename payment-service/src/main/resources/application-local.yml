@@ -1,7 +1,17 @@
 server:
   port: 8083
 
+payment:
+  provider:
+    enabled: ${PAYMENT_PROVIDER_ENABLED:true}
+    baseUrl: ${PAYMENT_PROVIDER_BASE_URL:http://localhost:8090}
+
 spring:
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: UTC
 
   kafka:
     bootstrap-servers: localhost:9092
@@ -17,12 +27,12 @@ spring:
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
   r2dbc:
-    url: r2dbc:mysql://localhost:3309/payment_db
+    url: r2dbc:mysql://localhost:3309/payment_db?serverZoneId=UTC
     username: root
     password: root
 
   flyway:
-    url: jdbc:mysql://localhost:3309/payment_db
+    url: jdbc:mysql://localhost:3309/payment_db?serverZoneId=UTC
     user: root
     password: root
     locations: classpath:db/migration
