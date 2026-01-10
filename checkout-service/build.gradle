@@ -30,6 +30,8 @@ dependencies {
     implementation 'org.springframework.kafka:spring-kafka'
     implementation "io.projectreactor.kafka:reactor-kafka"
 
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+
     implementation project(":common-events")
 
     compileOnly 'org.projectlombok:lombok:1.18.42'

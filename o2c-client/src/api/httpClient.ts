@@ -42,6 +42,10 @@ export class HttpClient {
         response.headers.get('X-Correlation-Id') || correlationId;
 
       if (!response.ok) {
+        if (response.status === 401 && typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('o2c:unauthorized'));
+        }
+
         const errorData = await response.json().catch(() => ({
           message: response.statusText,
         }));

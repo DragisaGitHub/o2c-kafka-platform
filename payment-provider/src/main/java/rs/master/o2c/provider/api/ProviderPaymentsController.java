@@ -49,7 +49,7 @@ public class ProviderPaymentsController {
                 ? UUID.randomUUID().toString()
                 : correlationId.trim();
 
-        boolean fail = "FAIL".equalsIgnoreCase(request.currency());
+        boolean fail = "FAI".equalsIgnoreCase(request.currency());
         String outcomeStatus = fail ? PaymentStatus.FAILED : PaymentStatus.SUCCEEDED;
         String failureReason = fail ? "Forced FAIL for testing" : null;
 

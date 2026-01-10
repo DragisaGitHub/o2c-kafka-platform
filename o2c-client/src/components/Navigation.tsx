@@ -1,7 +1,9 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 
 export function Navigation() {
   const location = useLocation();
+  const { state, logout } = useAuth();
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -40,6 +42,28 @@ export function Navigation() {
                 Orders
               </Link>
             </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {state.status === 'authenticated' ? (
+              <>
+                <span className="text-sm text-gray-600">{state.username}</span>
+                <button
+                  type="button"
+                  onClick={() => logout()}
+                  className="px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/login"
+                className="px-3 py-2 rounded-md text-gray-700 hover:bg-gray-100"
+              >
+                Login
+              </Link>
+            )}
           </div>
         </div>
       </div>

@@ -1,0 +1,13 @@
+server:
+  port: 8084
+
+auth:
+  jwt:
+    secret: "change-me-to-a-long-random-string-at-least-32-chars"
+    expires-in-minutes: 60
+
+bff:
+  upstream:
+    order: "http://localhost:8082"
+    checkout: "http://localhost:8081"
+    payment: "http://localhost:8083"

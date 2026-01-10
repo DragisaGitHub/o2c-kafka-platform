@@ -1,6 +1,10 @@
 server:
   port: 8082
 
+auth:
+  jwt:
+    secret: "change-me-to-a-long-random-string-at-least-32-chars"
+
 spring:
   kafka:
     bootstrap-servers: localhost:9092
@@ -32,3 +36,5 @@ logging:
     org.springframework.data.r2dbc: INFO
     io.asyncer.r2dbc.mysql.QUERY: INFO
     io.asyncer.r2dbc.mysql.PARAM: INFO
+    org.springframework.security: TRACE
+    org.springframework.security.oauth2: TRACE

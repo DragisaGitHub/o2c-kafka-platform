@@ -1,6 +1,10 @@
 server:
   port: 8081
 
+auth:
+  jwt:
+    secret: "change-me-to-a-long-random-string-at-least-32-chars"
+
 spring:
 
   kafka:

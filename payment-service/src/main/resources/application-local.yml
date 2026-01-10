@@ -1,6 +1,10 @@
 server:
   port: 8083
 
+auth:
+  jwt:
+    secret: "change-me-to-a-long-random-string-at-least-32-chars"
+
 payment:
   provider:
     enabled: ${PAYMENT_PROVIDER_ENABLED:true}
