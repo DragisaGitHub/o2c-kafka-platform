@@ -6,5 +6,6 @@ public record PinChallenge(
         String challengeId,
         String username,
         String pin,
-        Instant createdAt
+        Instant createdAt,
+        Instant expiresAt
 ) {}

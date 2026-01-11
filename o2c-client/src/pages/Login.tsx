@@ -13,12 +13,16 @@ function useNextUrl(): string {
 }
 
 export function Login() {
-  const { login } = useAuth();
+  const { startLogin, verifyPin, refresh } = useAuth();
   const navigate = useNavigate();
   const nextUrl = useNextUrl();
 
+  const [step, setStep] = useState<'credentials' | 'pin'>('credentials');
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+
   const [username, setUsername] = useState('user');
   const [password, setPassword] = useState('password');
+  const [pin, setPin] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
 
@@ -28,7 +32,20 @@ export function Login() {
     setError(null);
 
     try {
-      await login(username, password);
+      if (step === 'credentials') {
+        const res = await startLogin(username, password);
+        setChallengeId(res.challengeId);
+        setStep('pin');
+        setPin('');
+        return;
+      }
+
+      if (!challengeId) {
+        throw { code: 'AUTH_ERROR', message: 'Missing challengeId. Please start over.' } as ApiError;
+      }
+
+      await verifyPin(challengeId, pin);
+      await refresh();
       navigate(nextUrl, { replace: true });
     } catch (err) {
       setError(err as ApiError);
@@ -44,6 +61,12 @@ export function Login() {
         For local dev, use <span className="font-mono">user/password</span> or <span className="font-mono">admin/password</span>.
       </p>
 
+      {step === 'pin' && (
+        <p className="text-sm text-gray-600 mb-6">
+          MFA required. In <span className="font-mono">local/dev</span>, read the PIN from backend logs.
+        </p>
+      )}
+
       {error && (
         <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
           {error.message || 'Login failed'}
@@ -51,31 +74,61 @@ export function Login() {
       )}
 
       <form onSubmit={onSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2"
-            autoComplete="username"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2"
-            autoComplete="current-password"
-          />
-        </div>
+        {step === 'credentials' ? (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+              <input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2"
+                autoComplete="username"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2"
+                autoComplete="current-password"
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">PIN</label>
+              <input
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2"
+                autoComplete="one-time-code"
+                inputMode="numeric"
+              />
+            </div>
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={() => {
+                setStep('credentials');
+                setChallengeId(null);
+                setPin('');
+                setError(null);
+              }}
+              className="w-full rounded-md border border-gray-300 text-gray-700 px-3 py-2 disabled:opacity-60"
+            >
+              Back
+            </button>
+          </>
+        )}
         <button
           type="submit"
           disabled={submitting}
           className="w-full rounded-md bg-gray-900 text-white px-3 py-2 disabled:opacity-60"
         >
-          {submitting ? 'Signing in…' : 'Sign in'}
+          {submitting ? 'Working…' : step === 'credentials' ? 'Continue' : 'Verify PIN'}
         </button>
       </form>
     </div>

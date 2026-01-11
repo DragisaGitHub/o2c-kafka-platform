@@ -3,6 +3,7 @@ package rs.master.o2c.auth.bff;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,31 +32,29 @@ public class BffProxyController {
 
     private final WebClient webClient;
     private final BffUpstreamProperties upstreams;
-    private final BffSessionService sessions;
 
-    public BffProxyController(BffUpstreamProperties upstreams, BffSessionService sessions, WebClient.Builder builder) {
+    public BffProxyController(BffUpstreamProperties upstreams, WebClient.Builder builder) {
         this.upstreams = upstreams;
-        this.sessions = sessions;
         this.webClient = builder.build();
     }
 
     @RequestMapping("/api/{service}/**")
     public Mono<ResponseEntity<byte[]>> proxy(
             @PathVariable String service,
-            org.springframework.http.server.reactive.ServerHttpRequest request
+            org.springframework.http.server.reactive.ServerHttpRequest request,
+            Authentication authentication
     ) {
         String upstreamBase = resolveUpstream(service);
         if (upstreamBase == null) {
             return Mono.just(ResponseEntity.notFound().build());
         }
 
-        var cookie = request.getCookies().getFirst(BffSessionService.COOKIE_NAME);
-        if (cookie == null) {
+        if (authentication == null || !authentication.isAuthenticated()) {
             return Mono.just(ResponseEntity.status(401).build());
         }
 
-        var session = sessions.getValidSession(cookie.getValue());
-        if (session == null) {
+        String token = authentication.getCredentials() == null ? null : String.valueOf(authentication.getCredentials());
+        if (!StringUtils.hasText(token)) {
             return Mono.just(ResponseEntity.status(401).build());
         }
 
@@ -77,7 +76,7 @@ public class BffProxyController {
                 .headers(out -> {
                     copyRequestHeaders(request.getHeaders(), out);
                     out.remove(HttpHeaders.COOKIE);
-                    out.setBearerAuth(session.accessToken());
+                    out.setBearerAuth(token);
                 });
 
         boolean hasBody = method == HttpMethod.POST || method == HttpMethod.PUT || method == HttpMethod.PATCH;
