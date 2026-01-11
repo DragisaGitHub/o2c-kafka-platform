@@ -93,6 +93,23 @@ export interface ApiError {
   correlationId?: string;
 }
 
+// Admin / Control Panel types
+export interface AdminUserSummary {
+  username: string;
+  roles: string[];
+  enabled: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export type AdminUserDetails = AdminUserSummary;
+
+export interface CreateAdminUserRequest {
+  username: string;
+  password: string;
+  roles: string[];
+}
+
 // Filter types
 export interface OrderFilters {
   customerId?: string;

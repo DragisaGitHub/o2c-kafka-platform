@@ -6,6 +6,7 @@ import {OrderDetails} from "../pages/OrderDetails";
 import { Login } from '../pages/Login';
 import { AuthProvider } from '../auth/AuthContext';
 import { RequireAuth } from '../auth/RequireAuth';
+import { ControlPanel } from '../pages/ControlPanel';
 
 export default function App() {
   return (
@@ -45,6 +46,15 @@ export default function App() {
               element={
                 <RequireAuth>
                   <OrderDetails />
+                </RequireAuth>
+              }
+            />
+
+            <Route
+              path="/control-panel"
+              element={
+                <RequireAuth>
+                  <ControlPanel />
                 </RequireAuth>
               }
             />

@@ -6,12 +6,14 @@ export type AuthStatus = 'loading' | 'authenticated' | 'anonymous';
 export type AuthState = {
   status: AuthStatus;
   username?: string;
+  roles?: string[];
 };
 
 type AuthContextValue = {
   state: AuthState;
   refresh: () => Promise<void>;
-  login: (username: string, password: string) => Promise<void>;
+  startLogin: (username: string, password: string) => Promise<{ challengeId: string }>;
+  verifyPin: (challengeId: string, pin: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -22,17 +24,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     try {
-      const session = await bffAuthService.getSession();
-      setState({ status: 'authenticated', username: session.username });
+      const me = await bffAuthService.getMe();
+      setState({ status: 'authenticated', username: me.username, roles: me.roles });
     } catch {
       setState({ status: 'anonymous' });
     }
   }, []);
 
-  const login = useCallback(async (username: string, password: string) => {
-    await bffAuthService.login(username, password);
-    await refresh();
-  }, [refresh]);
+  const startLogin = useCallback(async (username: string, password: string) => {
+    return bffAuthService.startLogin(username, password);
+  }, []);
+
+  const verifyPin = useCallback(async (challengeId: string, pin: string) => {
+    await bffAuthService.verifyPin(challengeId, pin);
+  }, []);
 
   const logout = useCallback(async () => {
     await bffAuthService.logout();
@@ -51,7 +56,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('o2c:unauthorized', onUnauthorized as EventListener);
   }, []);
 
-  const value = useMemo<AuthContextValue>(() => ({ state, refresh, login, logout }), [state, refresh, login, logout]);
+  const value = useMemo<AuthContextValue>(
+    () => ({ state, refresh, startLogin, verifyPin, logout }),
+    [state, refresh, startLogin, verifyPin, logout]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -6,8 +6,33 @@ auth:
     secret: "change-me-to-a-long-random-string-at-least-32-chars"
     expires-in-minutes: 60
 
+  mfa:
+    challenge-ttl-seconds: 120
+
+  bootstrap:
+    username: ${AUTH_BOOTSTRAP_USERNAME:}
+    password: ${AUTH_BOOTSTRAP_PASSWORD:}
+
 bff:
+  cookie:
+    secure: false
+    same-site: Lax
+  cors:
+    allowed-origins:
+      - "http://localhost:5173"
   upstream:
     order: "http://localhost:8082"
     checkout: "http://localhost:8081"
     payment: "http://localhost:8083"
+
+spring:
+  r2dbc:
+    url: r2dbc:mysql://localhost:3310/auth_db?serverZoneId=UTC
+    username: root
+    password: root
+
+  flyway:
+    url: jdbc:mysql://localhost:3310/auth_db?serverZoneId=UTC
+    user: root
+    password: root
+    locations: classpath:db/migration

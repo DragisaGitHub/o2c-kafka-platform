@@ -50,6 +50,23 @@ services:
       retries: 30
     networks: [ o2c-net ]
 
+  mysql-auth:
+    image: mysql:8.1
+    container_name: mysql-auth
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: auth_db
+    ports:
+      - "3310:3306"
+    volumes:
+      - mysql-auth-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    networks: [o2c-net]
+
   kafka:
     image: apache/kafka:4.1.1
     container_name: kafka
@@ -101,3 +118,4 @@ volumes:
   mysql-order-data:
   mysql-checkout-data:
   mysql-payment-data:
+  mysql-auth-data:
