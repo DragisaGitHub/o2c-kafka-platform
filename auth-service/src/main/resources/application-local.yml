@@ -13,6 +13,13 @@ auth:
     username: ${AUTH_BOOTSTRAP_USERNAME:}
     password: ${AUTH_BOOTSTRAP_PASSWORD:}
 
+mfa:
+  totp:
+    issuer: O2C
+    setup-ttl-seconds: 600
+    login-challenge-ttl-seconds: 180
+    encryption-key: ${MFA_TOTP_ENCRYPTION_KEY:change-me}
+
 bff:
   cookie:
     secure: false
