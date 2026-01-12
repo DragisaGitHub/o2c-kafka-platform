@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ApiError, AdminUserDetails, AdminUserSummary, CreateAdminUserRequest } from '../types';
 import { useAuth } from '../auth/AuthContext';
 import { adminUsersService } from '../api/adminUsersService';
+import { adminTotpService } from '../api/adminTotpService';
 import { ErrorBanner } from '../components/ErrorBanner';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Forbidden } from './Forbidden';
@@ -290,6 +291,19 @@ function UserDetailsDrawer({
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordNote, setPasswordNote] = useState<string | null>(null);
 
+  const [totpSetupId, setTotpSetupId] = useState<string | null>(null);
+  const [totpExpiresAt, setTotpExpiresAt] = useState<string | null>(null);
+  const [totpCode, setTotpCode] = useState('');
+  const [totpQrUrl, setTotpQrUrl] = useState<string | null>(null);
+  const [totpBusy, setTotpBusy] = useState(false);
+  const [totpNote, setTotpNote] = useState<string | null>(null);
+  const [totpError, setTotpError] = useState<ApiError | null>(null);
+
+  const setTotpDigits = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, '').slice(0, 6);
+    setTotpCode(digitsOnly);
+  };
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -308,6 +322,48 @@ function UserDetailsDrawer({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | null = null;
+
+    const fetchQr = async () => {
+      if (!user || !totpSetupId) {
+        setTotpQrUrl(null);
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          `/api/admin/users/${encodeURIComponent(user.username)}/mfa/totp/qr?setupId=${encodeURIComponent(totpSetupId)}`,
+          { method: 'GET', credentials: 'include' }
+        );
+
+        if (!res.ok) {
+          throw { code: `HTTP_${res.status}`, message: res.statusText } as ApiError;
+        }
+
+        const blob = await res.blob();
+        objectUrl = URL.createObjectURL(blob);
+        if (!cancelled) {
+          setTotpQrUrl(objectUrl);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setTotpQrUrl(null);
+        }
+      }
+    };
+
+    void fetchQr();
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [user, totpSetupId]);
 
   const saveMutations = async () => {
     if (!user) return;
@@ -361,6 +417,60 @@ function UserDetailsDrawer({
       }
     } finally {
       setPasswordSaving(false);
+    }
+  };
+
+  const startTotpEnrollment = async () => {
+    if (!user) return;
+
+    setTotpBusy(true);
+    setTotpError(null);
+    setTotpNote(null);
+    try {
+      const res = await adminTotpService.enrollTotp(user.username);
+      setTotpSetupId(res.setupId);
+      setTotpExpiresAt(res.expiresAt);
+      setTotpCode('');
+      setTotpQrUrl(null);
+      setTotpNote('Scan the QR code, then enter the 6-digit code to confirm.');
+    } catch (e) {
+      setTotpError(e as ApiError);
+    } finally {
+      setTotpBusy(false);
+    }
+  };
+
+  const confirmTotpEnrollment = async () => {
+    if (!user || !totpSetupId) return;
+
+    if (totpCode.trim().length !== 6) {
+      setTotpNote('Please enter the 6-digit code.');
+      return;
+    }
+
+    setTotpBusy(true);
+    setTotpError(null);
+    setTotpNote(null);
+    try {
+      await adminTotpService.confirmTotp(user.username, totpSetupId, totpCode);
+      setTotpSetupId(null);
+      setTotpExpiresAt(null);
+      setTotpCode('');
+      setTotpQrUrl(null);
+      setTotpNote('TOTP enabled for this user.');
+    } catch (e) {
+      const err = e as ApiError;
+      if (err.code === 'NOT_FOUND') {
+        setTotpSetupId(null);
+        setTotpExpiresAt(null);
+        setTotpCode('');
+        setTotpQrUrl(null);
+        setTotpNote('Setup expired. Start enrollment again.');
+      } else {
+        setTotpError(err);
+      }
+    } finally {
+      setTotpBusy(false);
     }
   };
 
@@ -504,6 +614,103 @@ function UserDetailsDrawer({
                   </div>
                   {passwordNote && (
                     <p className="mt-2 text-sm text-gray-600">{passwordNote}</p>
+                  )}
+                </div>
+
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <h4 className="text-gray-900">TOTP / MFA</h4>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Enroll a user into TOTP (Authenticator app).
+                  </p>
+
+                  {totpError && (
+                    <div className="mt-3">
+                      <ErrorBanner
+                        error={totpError}
+                        onDismiss={() => setTotpError(null)}
+                      />
+                    </div>
+                  )}
+
+                  <div className="mt-3 flex items-center gap-3">
+                    <button
+                      type="button"
+                      disabled={totpBusy}
+                      onClick={startTotpEnrollment}
+                      className="px-4 py-2 rounded-md bg-gray-900 hover:bg-black text-white disabled:opacity-60"
+                    >
+                      {totpBusy
+                        ? 'Working…'
+                        : totpSetupId
+                          ? 'Re-enroll'
+                          : 'Start enrollment'}
+                    </button>
+                    {totpExpiresAt && (
+                      <span className="text-xs text-gray-500">
+                        Expires: {new Date(totpExpiresAt).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+
+                  {totpSetupId && user && (
+                    <div className="mt-4 grid grid-cols-1 gap-4">
+                      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+                        <div className="flex items-center justify-center">
+                          <div className="bg-white border border-gray-200 rounded-md p-2">
+                            {totpQrUrl ? (
+                              <img
+                                src={totpQrUrl}
+                                alt="TOTP QR code"
+                                className="block"
+                                style={{ width: 256, height: 256 }}
+                              />
+                            ) : (
+                              <div
+                                className="flex items-center justify-center text-xs text-gray-500"
+                                style={{ width: 256, height: 256 }}
+                              >
+                                Loading QR…
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <p className="mt-2 text-xs text-gray-600 text-center">
+                          Scan with Google Authenticator, Microsoft Authenticator, 1Password, etc.
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm text-gray-700 mb-2">
+                          Confirm code
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            value={totpCode}
+                            onChange={(e) => setTotpDigits(e.target.value)}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="123456"
+                            autoComplete="one-time-code"
+                            inputMode="numeric"
+                            maxLength={6}
+                          />
+                          <button
+                            type="button"
+                            disabled={totpBusy}
+                            onClick={confirmTotpEnrollment}
+                            className="px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-60"
+                          >
+                            {totpBusy ? 'Confirming…' : 'Confirm'}
+                          </button>
+                        </div>
+                        {totpNote && (
+                          <p className="mt-2 text-sm text-gray-600">{totpNote}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {!totpSetupId && totpNote && (
+                    <p className="mt-2 text-sm text-gray-600">{totpNote}</p>
                   )}
                 </div>
               </>

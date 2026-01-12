@@ -18,13 +18,19 @@ import rs.master.o2c.auth.bff.BffCookieProperties;
 import rs.master.o2c.auth.bff.BffCorsProperties;
 import rs.master.o2c.auth.bff.BffSessionService;
 import rs.master.o2c.auth.config.AuthJwtProperties;
-import rs.master.o2c.auth.config.AuthMfaProperties;
+import rs.master.o2c.auth.config.TotpProperties;
 import rs.master.o2c.auth.config.SecurityConfig;
-import rs.master.o2c.auth.impl.InMemoryPinChallengeService;
+import rs.master.o2c.auth.impl.InMemoryLoginChallengeService;
+import rs.master.o2c.auth.impl.InMemoryTotpEnrollmentService;
 import rs.master.o2c.auth.impl.JwtServiceImpl;
+import rs.master.o2c.auth.impl.TotpCryptoServiceImpl;
+import rs.master.o2c.auth.impl.TotpServiceImpl;
 import rs.master.o2c.auth.security.BffSessionAuthenticationConverter;
 import rs.master.o2c.auth.service.JwtService;
-import rs.master.o2c.auth.service.PinChallengeService;
+import rs.master.o2c.auth.service.LoginChallengeService;
+import rs.master.o2c.auth.service.TotpCryptoService;
+import rs.master.o2c.auth.service.TotpService;
+import rs.master.o2c.auth.service.TotpUserMfaService;
 import rs.master.o2c.auth.service.UserService;
 
 import java.util.List;
@@ -39,18 +45,24 @@ import static org.mockito.Mockito.when;
         SecurityConfig.class,
         BffSessionService.class,
         BffSessionAuthenticationConverter.class,
-        InMemoryPinChallengeService.class
+    InMemoryLoginChallengeService.class,
+    InMemoryTotpEnrollmentService.class,
+    TotpServiceImpl.class,
+    TotpCryptoServiceImpl.class
 })
 @TestPropertySource(properties = {
         "auth.jwt.secret=0123456789abcdef0123456789abcdef0123456789abcdef",
         "auth.jwt.expires-in-minutes=60",
-        "auth.mfa.challenge-ttl-seconds=120",
+    "mfa.totp.issuer=O2C",
+    "mfa.totp.setup-ttl-seconds=600",
+    "mfa.totp.login-challenge-ttl-seconds=180",
+    "mfa.totp.encryption-key=test-key",
         "bff.cookie.secure=false",
         "bff.cookie.same-site=Lax"
 })
 class AuthControllerMfaWebTest {
 
-    @EnableConfigurationProperties({AuthJwtProperties.class, AuthMfaProperties.class, BffCookieProperties.class, BffCorsProperties.class})
+    @EnableConfigurationProperties({AuthJwtProperties.class, TotpProperties.class, BffCookieProperties.class, BffCorsProperties.class})
     static class TestConfig {
 
         @Bean
@@ -60,23 +72,33 @@ class AuthControllerMfaWebTest {
     }
 
     @Autowired WebTestClient webTestClient;
-    @Autowired PinChallengeService pinChallengeService;
+    @Autowired LoginChallengeService loginChallengeService;
     @Autowired BffSessionService sessions;
     @Autowired JwtService jwtService;
+    @Autowired TotpService totp;
+    @Autowired TotpCryptoService crypto;
 
     @MockBean UserService userService;
+    @MockBean TotpUserMfaService userMfa;
 
     @Test
     void mfaVerifySetsCookieAndApiMeReturnsUnprefixedRoles() {
-        var ch = pinChallengeService.createChallenge("alice");
+        byte[] secret = "0123456789abcdefghij".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+        byte[] secretEnc = crypto.encrypt(secret);
+
+        var ch = loginChallengeService.createChallenge("alice");
+        String code = totp.currentCode(secret);
 
         when(userService.loadUserWithRoles(eq("alice")))
                 .thenReturn(Mono.just(new UserService.UserWithRoles("alice", List.of("ADMIN", "USER"))));
 
+        when(userMfa.loadTotpMfa(eq("alice")))
+            .thenReturn(Mono.just(new TotpUserMfaService.UserTotpMfa(true, secretEnc)));
+
         EntityExchangeResult<VerifyMfaResponse> result = webTestClient
                 .post()
                 .uri("/auth/mfa/verify")
-                .bodyValue(new VerifyMfaRequest(ch.challengeId(), ch.pin()))
+            .bodyValue(new VerifyMfaRequest(ch.challengeId(), code))
                 .exchange()
                 .expectStatus().isOk()
                 .expectHeader().exists(HttpHeaders.SET_COOKIE)

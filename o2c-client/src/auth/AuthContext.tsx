@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { bffAuthService } from '../api/bffAuthService';
+import { bffAuthService, type StartLoginResult } from '../api/bffAuthService';
 
 export type AuthStatus = 'loading' | 'authenticated' | 'anonymous';
 
@@ -12,8 +12,9 @@ export type AuthState = {
 type AuthContextValue = {
   state: AuthState;
   refresh: () => Promise<void>;
-  startLogin: (username: string, password: string) => Promise<{ challengeId: string }>;
+  startLogin: (username: string, password: string) => Promise<StartLoginResult>;
   verifyPin: (challengeId: string, pin: string) => Promise<void>;
+  confirmTotpEnrollment: (setupId: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -39,6 +40,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await bffAuthService.verifyPin(challengeId, pin);
   }, []);
 
+  const confirmTotpEnrollment = useCallback(async (setupId: string, code: string) => {
+    await bffAuthService.confirmTotpEnrollment(setupId, code);
+  }, []);
+
   const logout = useCallback(async () => {
     await bffAuthService.logout();
     setState({ status: 'anonymous' });
@@ -57,8 +62,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ state, refresh, startLogin, verifyPin, logout }),
-    [state, refresh, startLogin, verifyPin, logout]
+    () => ({ state, refresh, startLogin, verifyPin, confirmTotpEnrollment, logout }),
+    [state, refresh, startLogin, verifyPin, confirmTotpEnrollment, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -2,6 +2,11 @@ import type { ApiError } from '../types';
 
 export type MeInfo = { username: string; roles: string[] };
 
+export type StartLoginResult =
+  | { status: 'MFA_REQUIRED'; challengeId: string }
+  | { status: 'ENROLL_REQUIRED'; setupId: string }
+  | { status: 'AUTHENTICATED'; username?: string };
+
 function toApiError(message: string, correlationId?: string): ApiError {
   return {
     code: 'AUTH_ERROR',
@@ -28,7 +33,7 @@ export const bffAuthService = {
     return (await res.json()) as MeInfo;
   },
 
-  async startLogin(username: string, password: string): Promise<{ challengeId: string }> {
+  async startLogin(username: string, password: string): Promise<StartLoginResult> {
     const res = await fetch('/auth/login', {
       method: 'POST',
       credentials: 'include',
@@ -44,8 +49,40 @@ export const bffAuthService = {
       throw toApiError(body?.message || res.statusText);
     }
 
-    const json = (await res.json()) as { status: string; challengeId: string };
-    return { challengeId: json.challengeId };
+    const json = (await res.json()) as { status: string; challengeId?: string | null; username?: string };
+    if (json.status === 'AUTHENTICATED') {
+      return { status: 'AUTHENTICATED', username: json.username };
+    }
+
+    if (json.status === 'MFA_REQUIRED' && json.challengeId) {
+      return { status: 'MFA_REQUIRED', challengeId: json.challengeId };
+    }
+
+    if (json.status === 'ENROLL_REQUIRED' && json.challengeId) {
+      return { status: 'ENROLL_REQUIRED', setupId: json.challengeId };
+    }
+
+    throw toApiError('Unexpected login response');
+  },
+
+  async confirmTotpEnrollment(setupId: string, code: string): Promise<{ username: string }> {
+    const res = await fetch('/auth/mfa/totp/confirm', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ setupId, code }),
+    });
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        throw toApiError('Invalid code');
+      }
+      const body = await res.json().catch(() => null);
+      throw toApiError(body?.message || res.statusText);
+    }
+
+    const json = (await res.json()) as { status: string; username: string };
+    return { username: json.username };
   },
 
   async verifyPin(challengeId: string, pin: string): Promise<{ username: string }> {
@@ -58,7 +95,7 @@ export const bffAuthService = {
 
     if (!res.ok) {
       if (res.status === 401) {
-        throw toApiError('Invalid or expired PIN');
+        throw toApiError('Invalid or expired code');
       }
       const body = await res.json().catch(() => null);
       throw toApiError(body?.message || res.statusText);
