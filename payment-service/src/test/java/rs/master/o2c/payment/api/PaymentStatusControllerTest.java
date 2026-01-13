@@ -5,13 +5,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Flux;
 import rs.master.o2c.payment.api.dto.PaymentStatusDto;
 import rs.master.o2c.payment.config.SecurityConfig;
 import rs.master.o2c.payment.observability.CorrelationIdWebFilter;
 import rs.master.o2c.payment.persistence.entity.PaymentEntity;
+import rs.master.o2c.payment.persistence.repository.PaymentAttemptRepository;
 import rs.master.o2c.payment.persistence.repository.PaymentRepository;
+import rs.master.o2c.payment.impl.PaymentQueryServiceImpl;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -21,9 +24,10 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockJwt;
 
 @WebFluxTest(controllers = PaymentStatusController.class)
-@Import({SecurityConfig.class, CorrelationIdWebFilter.class})
+@Import({SecurityConfig.class, CorrelationIdWebFilter.class, PaymentQueryServiceImpl.class})
 @SuppressWarnings({"null", "removal"})
 class PaymentStatusControllerTest {
 
@@ -33,9 +37,15 @@ class PaymentStatusControllerTest {
     @MockBean
     private PaymentRepository paymentRepository;
 
+    @MockBean
+    private PaymentAttemptRepository paymentAttemptRepository;
+
+    @MockBean
+    private ReactiveJwtDecoder reactiveJwtDecoder;
+
     @Test
     void status_shouldReturn400_whenOrderIdsMissing() {
-        webTestClient.get()
+        webTestClient.mutateWith(mockJwt()).get()
                 .uri("/payments/status")
                 .exchange()
                 .expectStatus().isBadRequest();
@@ -45,7 +55,7 @@ class PaymentStatusControllerTest {
 
     @Test
     void status_shouldReturn400_whenOrderIdsEmpty() {
-        webTestClient.get()
+        webTestClient.mutateWith(mockJwt()).get()
                 .uri("/payments/status?orderIds=")
                 .exchange()
                 .expectStatus().isBadRequest();
@@ -55,7 +65,7 @@ class PaymentStatusControllerTest {
 
     @Test
     void status_shouldReturn400_whenOrderIdsContainsInvalidUuid() {
-        webTestClient.get()
+        webTestClient.mutateWith(mockJwt()).get()
                 .uri("/payments/status?orderIds=not-a-uuid")
                 .exchange()
                 .expectStatus().isBadRequest();
@@ -100,7 +110,7 @@ class PaymentStatusControllerTest {
 
         when(paymentRepository.findByOrderIdIn(anyCollection())).thenReturn(Flux.just(p1, p2));
 
-        webTestClient.get()
+        webTestClient.mutateWith(mockJwt()).get()
                 .uri("/payments/status?orderIds={ids}", id1 + "," + id2)
                 .exchange()
                 .expectStatus().isOk()

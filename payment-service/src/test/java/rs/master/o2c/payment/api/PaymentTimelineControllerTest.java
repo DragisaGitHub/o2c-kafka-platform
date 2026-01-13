@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -14,15 +15,17 @@ import rs.master.o2c.payment.persistence.entity.PaymentAttemptEntity;
 import rs.master.o2c.payment.persistence.entity.PaymentEntity;
 import rs.master.o2c.payment.persistence.repository.PaymentAttemptRepository;
 import rs.master.o2c.payment.persistence.repository.PaymentRepository;
+import rs.master.o2c.payment.impl.PaymentQueryServiceImpl;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockJwt;
 
 @WebFluxTest(controllers = PaymentTimelineController.class)
-@Import({SecurityConfig.class, CorrelationIdWebFilter.class})
+@Import({SecurityConfig.class, CorrelationIdWebFilter.class, PaymentQueryServiceImpl.class})
 @SuppressWarnings({"null", "removal"})
 class PaymentTimelineControllerTest {
 
@@ -35,9 +38,12 @@ class PaymentTimelineControllerTest {
     @MockBean
     private PaymentAttemptRepository paymentAttemptRepository;
 
+        @MockBean
+        private ReactiveJwtDecoder reactiveJwtDecoder;
+
     @Test
     void timeline_shouldReturn400_whenOrderIdInvalid() {
-        webTestClient.get()
+        webTestClient.mutateWith(mockJwt()).get()
                 .uri("/payments/not-a-uuid/timeline")
                 .exchange()
                 .expectStatus().isBadRequest();
@@ -49,7 +55,7 @@ class PaymentTimelineControllerTest {
 
         when(paymentRepository.findByOrderId(orderId)).thenReturn(Mono.empty());
 
-        webTestClient.get()
+        webTestClient.mutateWith(mockJwt()).get()
                 .uri("/payments/{orderId}/timeline", orderId)
                 .exchange()
                 .expectStatus().isNotFound();
@@ -88,7 +94,7 @@ class PaymentTimelineControllerTest {
         when(paymentRepository.findByOrderId(orderId)).thenReturn(Mono.just(payment));
         when(paymentAttemptRepository.findByPaymentIdOrderByAttemptNoAsc("pay-1")).thenReturn(Flux.just(attempt1));
 
-        webTestClient.get()
+        webTestClient.mutateWith(mockJwt()).get()
                 .uri("/payments/{orderId}/timeline", orderId)
                 .exchange()
                 .expectStatus().isOk()

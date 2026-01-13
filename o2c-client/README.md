@@ -1,73 +1,58 @@
-# React + TypeScript + Vite
+# O2C Client (React + TypeScript + Vite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the browser UI for the O2C demo.
 
-Currently, two official plugins are available:
+## Integration model (important): auth-service is the BFF
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+The browser must talk only to **auth-service**.
 
-## React Compiler
+- Browser endpoints:
+  - `POST /auth/login`
+  - `POST /auth/mfa/verify`
+  - `POST /logout`
+  - `GET/POST /api/{service}/**` (BFF proxy)
+- After MFA verification, auth-service sets an `O2C_BFF_SESSION` **HttpOnly** cookie.
+- The UI never calls `order-service`, `checkout-service`, or `payment-service` directly from the browser.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Local dev routing:
 
-## Expanding the ESLint configuration
+- Vite proxies `/api`, `/auth`, `/logout` to `http://localhost:8084` (see `vite.config.ts`).
+- Requests are sent with `credentials: 'include'` so the browser includes `O2C_BFF_SESSION`.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Prerequisites
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Node.js 18+
+- Backend stack running locally (Kafka + MySQL + services). See `../QUICKSTART.md`.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Run (Yarn only)
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+From repository root:
+
+```powershell
+cd o2c-client
+
+yarn install
+yarn dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+UI is served at `http://localhost:5173`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Login flow
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+1) Open `http://localhost:5173/login`
+2) Log in with username/password
+3) Complete MFA (local/dev PIN is typically available via auth-service logs)
+4) The browser stores the session as an HttpOnly cookie (no token stored in JS)
+
+## Configuration
+
+You normally do not need env vars for local dev.
+
+Optional overrides (advanced):
+
+- `VITE_ORDER_BASE_URL` (default: `/api/order`)
+- `VITE_CHECKOUT_BASE_URL` (default: `/api/checkout`)
+- `VITE_PAYMENT_BASE_URL` (default: `/api/payment`)
+
+These should still point to the BFF proxy paths (not to downstream service hosts).
+  # O2C Client (React + TypeScript + Vite)

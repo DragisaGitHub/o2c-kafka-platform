@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 import rs.master.o2c.events.payment.PaymentStatus;
@@ -17,6 +18,7 @@ import rs.master.o2c.payment.persistence.entity.PaymentAttemptEntity;
 import rs.master.o2c.payment.persistence.entity.PaymentEntity;
 import rs.master.o2c.payment.persistence.repository.PaymentAttemptRepository;
 import rs.master.o2c.payment.persistence.repository.PaymentRepository;
+import rs.master.o2c.payment.impl.ProviderWebhookServiceImpl;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -27,7 +29,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @WebFluxTest(controllers = ProviderWebhookController.class)
-@Import({SecurityConfig.class, CorrelationIdWebFilter.class})
+@Import({SecurityConfig.class, CorrelationIdWebFilter.class, ProviderWebhookServiceImpl.class})
 @SuppressWarnings({"null", "removal"})
 class ProviderWebhookControllerTest {
 
@@ -42,6 +44,9 @@ class ProviderWebhookControllerTest {
 
     @MockBean
     PaymentEventPublisher paymentEventPublisher;
+
+        @MockBean
+        ReactiveJwtDecoder reactiveJwtDecoder;
 
     @Test
     void webhook_shouldReturn202_whenProviderPaymentIdUnknown() {

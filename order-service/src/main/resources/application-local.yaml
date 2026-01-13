@@ -36,5 +36,5 @@ logging:
     org.springframework.data.r2dbc: INFO
     io.asyncer.r2dbc.mysql.QUERY: INFO
     io.asyncer.r2dbc.mysql.PARAM: INFO
-    org.springframework.security: TRACE
-    org.springframework.security.oauth2: TRACE
+    org.springframework.security: ${SECURITY_LOG_LEVEL:INFO}
+    org.springframework.security.oauth2: ${SECURITY_OAUTH2_LOG_LEVEL:${SECURITY_LOG_LEVEL:INFO}}
