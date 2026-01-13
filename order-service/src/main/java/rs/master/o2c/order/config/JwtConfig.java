@@ -16,8 +16,20 @@ public class JwtConfig {
 
     @Bean
     public ReactiveJwtDecoder jwtDecoder(@Value("${auth.jwt.secret}") String secret) {
-        System.out.println("[ORDER] jwt secret length=" + secret.length());
-        SecretKey key = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA384");
-        return NimbusReactiveJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS384).build();
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException("auth.jwt.secret must be configured");
+        }
+
+        byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (secretBytes.length < 32) {
+            throw new IllegalStateException("auth.jwt.secret must be at least 32 bytes");
+        }
+
+        SecretKey key = new SecretKeySpec(secretBytes, "HmacSHA384");
+
+        return NimbusReactiveJwtDecoder
+                .withSecretKey(key)
+                .macAlgorithm(MacAlgorithm.HS384)
+                .build();
     }
 }

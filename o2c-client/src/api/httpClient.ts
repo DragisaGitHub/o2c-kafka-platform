@@ -1,4 +1,4 @@
-import type { ApiError } from '../types';
+import type {ApiError} from '../types';
 
 // Generate UUID v4
 export function generateUUID(): string {
@@ -14,7 +14,7 @@ interface RequestOptions extends RequestInit {
 }
 
 export class HttpClient {
-  private baseUrl: string;
+  private readonly baseUrl: string;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -34,6 +34,7 @@ export class HttpClient {
 
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        credentials: 'include',
         ...options,
         headers,
       });
@@ -50,13 +51,11 @@ export class HttpClient {
           message: response.statusText,
         }));
 
-        const error: ApiError = {
+        throw {
           code: errorData.code || `HTTP_${response.status}`,
           message: errorData.message || response.statusText,
           correlationId: responseCorrelationId,
         };
-
-        throw error;
       }
 
       const data = await response.json();
@@ -69,15 +68,13 @@ export class HttpClient {
         throw error;
       }
 
-      const apiError: ApiError = {
+      throw {
         message:
-          error instanceof Error
-            ? error.message
-            : 'An unexpected error occurred',
+            error instanceof Error
+                ? error.message
+                : 'An unexpected error occurred',
         correlationId,
       };
-
-      throw apiError;
     }
   }
 

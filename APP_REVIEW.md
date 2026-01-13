@@ -110,7 +110,11 @@ Kafka topics are explicitly versioned in `common-events/src/main/java/rs/master/
 
 **Why it matters**: it affects CORS/CSRF, token handling, UI base URL, error propagation, and local onboarding.
 
-**Recommended path (pick one):**
+**Repository decision (enterprise default):** use **auth-service as the single browser entry point (BFF)**.
+
+The UI talks to `auth-service` only (cookie session + `/api/{service}/**` proxy). Direct browser access to downstream services is considered non-default and should only exist (if at all) behind a dedicated local/dev-only profile.
+
+**Alternative (not default):** direct-to-services calls.
 
 - **A. Keep Option B (direct to services)**
   - Then local dev must explain how the UI obtains/uses JWT (or how security is relaxed locally).

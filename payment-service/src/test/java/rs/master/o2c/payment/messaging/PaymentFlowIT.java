@@ -86,6 +86,7 @@ class PaymentFlowIT {
         try (AdminClient admin = AdminClient.create(adminProps)) {
             List<NewTopic> topics = List.of(
                     new NewTopic(TopicNames.PAYMENT_REQUESTS_V1, 1, (short) 1),
+                    new NewTopic(TopicNames.PAYMENT_REQUESTS_DLQ_V1, 1, (short) 1),
                     new NewTopic(TopicNames.PAYMENT_EVENTS_V1, 1, (short) 1),
                     new NewTopic(TopicNames.PAYMENT_EVENTS_DLQ_V1, 1, (short) 1)
             );

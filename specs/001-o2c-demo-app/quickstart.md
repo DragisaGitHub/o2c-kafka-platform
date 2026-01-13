@@ -53,11 +53,23 @@ Run each service in its own terminal (from the repository root).
 .\gradlew.bat :payment-service:bootRun
 ```
 
+```powershell
+# auth-service (BFF / gateway) (port 8084)
+.\gradlew.bat :auth-service:bootRun
+```
+
 ### Backend ports / base URLs
 
 - checkout-service: `http://localhost:8081`
 - order-service: `http://localhost:8082`
 - payment-service: `http://localhost:8083`
+
+**Browser-facing API (BFF):**
+
+- auth-service: `http://localhost:8084`
+- UI must call only:
+	- `/auth/**`, `/logout`
+	- `/api/{service}/**` (proxy)
 
 ## 3) Start the web client (Vite)
 
@@ -67,15 +79,20 @@ From the repository root:
 cd o2c-client
 
 # One-time install
-npm install
+yarn install
 
 # Start Vite dev server
-npm run dev
+yarn dev
 ```
 
 By default, Vite serves the UI at:
 
 - `http://localhost:5173/`
+
+Important:
+
+- Vite proxies `/api`, `/auth`, `/logout` to `http://localhost:8084`.
+- The browser must not call the downstream services directly.
 
 ## 4) Open the demo in the browser
 

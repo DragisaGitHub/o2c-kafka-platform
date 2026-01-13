@@ -4,10 +4,15 @@
 
 ## Local URLs / Ports
 
+- Web client (browser): http://localhost:5173
+- Browser-facing API (BFF): http://localhost:8084
+- Kafka UI: http://localhost:8089
+
+Downstream services (debug/health checks only; browser should not call these directly):
+
 - Order service: http://localhost:8082
 - Checkout service: http://localhost:8081
 - Payment service: http://localhost:8083
-- Web client: http://localhost:5173
 
 ## Cross-cutting
 
@@ -28,10 +33,11 @@
 
 ## 2) Start services
 
-- [ ] Start services (3 terminals recommended):
+- [ ] Start services (4 terminals recommended):
   - `./gradlew.bat :order-service:bootRun`
   - `./gradlew.bat :checkout-service:bootRun`
   - `./gradlew.bat :payment-service:bootRun`
+  - `./gradlew.bat :auth-service:bootRun`
 
 ## 3) Service health checks (copy/paste)
 
@@ -45,18 +51,22 @@
   - `curl.exe -sS http://localhost:8083/actuator/health`
   - Expected: `{"status":"UP"}`
 
+- [ ] Auth service (BFF):
+  - `curl.exe -sS http://localhost:8084/actuator/health`
+  - Expected: `{"status":"UP"}`
+
 ---
 
 ## 4) Start web client
 
 - [ ] In `o2c-client/`:
-  - Command: `npm install` (first time only)
-  - Command: `npm run dev`
+  - Command: `yarn install` (first time only)
+  - Command: `yarn dev`
 - [ ] Open: http://localhost:5173
 
 **If it fails**
-- Ensure `.env` is configured with base URLs (see `o2c-client/.env.local`)
-- Confirm services are reachable from the browser
+- Confirm `auth-service` is running on `http://localhost:8084`
+- Confirm Vite is proxying `/api`, `/auth`, `/logout` to `http://localhost:8084`
 
 ---
 
@@ -73,7 +83,8 @@
 **If it fails**
 - Open browser devtools Network tab
 - Check the response header `X-Correlation-Id`
-- Check order-service logs for that correlation id
+- Check auth-service logs for upstream call failures (it is the BFF)
+- Check order-service logs for the same correlation id
 
 ---
 
@@ -85,11 +96,10 @@
   - Status fields update over time without a full page reload (polling)
 
 **If it fails**
-- Check that list/search endpoint responds:
-  - GET http://localhost:8082/orders
-- Check batch endpoints respond for the listed order ids:
-  - GET http://localhost:8081/checkouts/status?orderIds={id1,id2,...}
-  - GET http://localhost:8083/payments/status?orderIds={id1,id2,...}
+- Check that the BFF proxy endpoints respond:
+  - GET http://localhost:8084/api/order/orders
+  - GET http://localhost:8084/api/checkout/checkouts/status?orderIds={id1,id2,...}
+  - GET http://localhost:8084/api/payment/payments/status?orderIds={id1,id2,...}
 
 ---
 
@@ -102,9 +112,9 @@
   - Timeline updates with polling (no manual refresh required)
 
 **If it fails**
-- Confirm timeline endpoints return JSON arrays:
-  - GET http://localhost:8081/checkouts/{orderId}/timeline
-  - GET http://localhost:8083/payments/{orderId}/timeline
+- Confirm timeline endpoints return JSON arrays via the BFF proxy:
+  - GET http://localhost:8084/api/checkout/checkouts/{orderId}/timeline
+  - GET http://localhost:8084/api/payment/payments/{orderId}/timeline
 - Use correlation id to find the related log lines across services
 
 ---

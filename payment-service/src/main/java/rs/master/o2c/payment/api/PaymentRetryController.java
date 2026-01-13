@@ -1,13 +1,9 @@
 package rs.master.o2c.payment.api;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
-import org.springframework.kafka.core.reactive.ReactiveKafkaProducerTemplate;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,59 +12,24 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import rs.master.o2c.events.CorrelationHeaders;
-import rs.master.o2c.events.EventEnvelope;
-import rs.master.o2c.events.EventTypes;
-import rs.master.o2c.events.ProducerNames;
-import rs.master.o2c.events.TopicNames;
-import rs.master.o2c.events.payment.PaymentRequested;
 import rs.master.o2c.payment.api.dto.RetryPaymentRequest;
-
-import java.nio.charset.StandardCharsets;
-import java.math.BigDecimal;
-import java.time.Instant;
-import java.util.Map;
 import java.util.UUID;
-
-import org.springframework.r2dbc.core.DatabaseClient;
+import rs.master.o2c.payment.service.PaymentRetryService;
 
 @RestController
 @RequestMapping("/payments")
 public class PaymentRetryController {
-
-    private static final String SQL_SELECT_PAYMENT_INFO = """
-            select
-                checkout_id as checkoutId,
-                customer_id as customerId,
-                total_amount as amount,
-                currency as currency
-            from payment
-            where order_id = :orderId
-            limit 1
-            """;
-
-    private static final String SQL_INSERT_RETRY = """
-            insert into payment_retry_request (retry_request_id, order_id)
-            values (:retryRequestId, :orderId)
-            """;
-
-    private final DatabaseClient databaseClient;
-    private final ReactiveKafkaProducerTemplate<String, String> producer;
-    private final ObjectMapper objectMapper;
+    private final PaymentRetryService paymentRetryService;
 
     public PaymentRetryController(
-            DatabaseClient databaseClient,
-            ReactiveKafkaProducerTemplate<String, String> producer,
-            ObjectMapper objectMapper
+            PaymentRetryService paymentRetryService
     ) {
-        this.databaseClient = databaseClient;
-        this.producer = producer;
-        this.objectMapper = objectMapper;
+        this.paymentRetryService = paymentRetryService;
     }
 
     @PostMapping("/{orderId}/retry")
-        public Mono<ResponseEntity<RetryResponse>> retry(
+    public Mono<ResponseEntity<RetryResponse>> retry(
             @PathVariable UUID orderId,
             @Valid @RequestBody RetryPaymentRequest request,
             @RequestHeader(value = CorrelationHeaders.X_CORRELATION_ID, required = false) String correlationId
@@ -77,120 +38,15 @@ public class PaymentRetryController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "orderId mismatch");
         }
 
-        return fetchPaymentInfo(orderId)
-            .switchIfEmpty(Mono.error(new ResponseStatusException(HttpStatus.NOT_FOUND, "payment not found")))
-            .flatMap(info ->
-                insertIdempotencyRow(request)
-                    .then(publishPaymentRequested(request, correlationId, info))
-                    .thenReturn(ResponseEntity.accepted().body(new RetryResponse("ACCEPTED", request.retryRequestId())))
-                    .onErrorResume(DuplicateKeyException.class, e ->
-                        Mono.just(ResponseEntity.ok(new RetryResponse("ALREADY_ACCEPTED", request.retryRequestId())))
-                    )
-            );
-    }
-
-    private Mono<Void> insertIdempotencyRow(RetryPaymentRequest request) {
-        return databaseClient
-                .sql(SQL_INSERT_RETRY)
-                .bind("retryRequestId", request.retryRequestId().toString())
-                .bind("orderId", request.orderId().toString())
-                .fetch()
-                .rowsUpdated()
-                .then();
-    }
-
-    private Mono<PaymentInfo> fetchPaymentInfo(UUID orderId) {
-        return databaseClient
-                .sql(SQL_SELECT_PAYMENT_INFO)
-                .bind("orderId", orderId.toString())
-                .fetch()
-                .one()
-                .flatMap(map -> Mono.justOrEmpty(toPaymentInfo(map)));
-    }
-
-    private static PaymentInfo toPaymentInfo(Map<String, Object> map) {
-        if (map == null || map.isEmpty()) return null;
-
-        Object checkoutId = map.get("checkoutId");
-        Object customerId = map.get("customerId");
-        Object amount = map.get("amount");
-        Object currency = map.get("currency");
-
-        if (!(checkoutId instanceof String c) || c.isBlank()) return null;
-        if (!(customerId instanceof String cu) || cu.isBlank()) return null;
-        if (!(currency instanceof String cur) || cur.isBlank()) return null;
-
-        BigDecimal amt;
-        if (amount instanceof BigDecimal bd) {
-            amt = bd;
-        } else if (amount instanceof Number n) {
-            amt = BigDecimal.valueOf(n.doubleValue());
-        } else {
-            return null;
-        }
-
-        return new PaymentInfo(c.trim(), cu.trim(), amt, cur.trim());
-    }
-
-    private Mono<Void> publishPaymentRequested(RetryPaymentRequest request, String correlationId, PaymentInfo info) {
-        return Mono.fromCallable(() -> toJsonPayload(request, correlationId, info))
-                .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(json -> {
-                    ProducerRecord<String, String> record = new ProducerRecord<>(
-                            TopicNames.PAYMENT_REQUESTS_V1,
-                            request.orderId().toString(),
-                            json
-                    );
-
-                    if (correlationId != null && !correlationId.isBlank()) {
-                        record.headers().add(
-                                CorrelationHeaders.X_CORRELATION_ID,
-                                correlationId.trim().getBytes(StandardCharsets.UTF_8)
-                        );
+        return paymentRetryService
+                .retry(request, correlationId)
+                .map(outcome -> {
+                    if (outcome.alreadyAccepted()) {
+                        return ResponseEntity.ok(new RetryResponse("ALREADY_ACCEPTED", outcome.retryRequestId()));
                     }
-
-                    return producer.send(record).then();
+                    return ResponseEntity.accepted().body(new RetryResponse("ACCEPTED", outcome.retryRequestId()));
                 });
     }
 
-    private String toJsonPayload(RetryPaymentRequest request, String correlationId, PaymentInfo info) throws JsonProcessingException {
-        UUID stableMessageId = request.retryRequestId();
-        UUID parsedCorrelationId = parseCorrelationIdOrNull(correlationId);
-
-        EventEnvelope<PaymentRequested> envelope = new EventEnvelope<>(
-                stableMessageId,
-                parsedCorrelationId,
-                stableMessageId,
-                EventTypes.PAYMENT_REQUESTED,
-                1,
-                Instant.now(),
-                ProducerNames.PAYMENT_SERVICE,
-                request.orderId().toString(),
-                new PaymentRequested(
-                        info.checkoutId(),
-                        request.orderId().toString(),
-                        info.customerId(),
-                        info.amount(),
-                        info.currency()
-                )
-        );
-
-        return objectMapper.writeValueAsString(envelope);
-    }
-
-    private static UUID parseCorrelationIdOrNull(String correlationId) {
-        if (correlationId == null || correlationId.isBlank()) {
-            return null;
-        }
-
-        try {
-            return UUID.fromString(correlationId.trim());
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
     public record RetryResponse(String status, UUID retryRequestId) {}
-
-    private record PaymentInfo(String checkoutId, String customerId, BigDecimal amount, String currency) {}
 }

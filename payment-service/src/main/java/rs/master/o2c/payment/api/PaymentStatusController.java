@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import rs.master.o2c.payment.api.dto.PaymentStatusDto;
-import rs.master.o2c.payment.persistence.repository.PaymentRepository;
+import rs.master.o2c.payment.service.PaymentQueryService;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -20,17 +20,16 @@ import java.util.UUID;
 @RequestMapping("/payments")
 public class PaymentStatusController {
 
-    private final PaymentRepository paymentRepository;
+    private final PaymentQueryService paymentQueryService;
 
-    public PaymentStatusController(PaymentRepository paymentRepository) {
-        this.paymentRepository = paymentRepository;
+    public PaymentStatusController(PaymentQueryService paymentQueryService) {
+        this.paymentQueryService = paymentQueryService;
     }
 
     @GetMapping("/status")
     public Flux<PaymentStatusDto> status(@RequestParam("orderIds") String orderIds) {
         List<String> parsed = parseOrderIds(orderIds);
-        return paymentRepository.findByOrderIdIn(parsed)
-            .map(p -> new PaymentStatusDto(p.orderId(), p.status(), p.failureReason()));
+        return paymentQueryService.statusByOrderIds(parsed);
     }
 
     private static List<String> parseOrderIds(String orderIds) {

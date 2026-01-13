@@ -10,6 +10,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.MediaType;
 import org.springframework.kafka.core.reactive.ReactiveKafkaProducerTemplate;
+import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 import reactor.kafka.sender.SenderResult;
@@ -17,6 +18,7 @@ import rs.master.o2c.events.CorrelationHeaders;
 import rs.master.o2c.payment.api.dto.RetryPaymentRequest;
 import rs.master.o2c.payment.config.SecurityConfig;
 import rs.master.o2c.payment.observability.CorrelationIdWebFilter;
+import rs.master.o2c.payment.impl.PaymentRetryServiceImpl;
 import org.apache.kafka.clients.producer.ProducerRecord;
 
 import org.springframework.r2dbc.core.DatabaseClient;
@@ -29,9 +31,10 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockJwt;
 
 @WebFluxTest(controllers = PaymentRetryController.class)
-@Import({SecurityConfig.class, CorrelationIdWebFilter.class})
+@Import({SecurityConfig.class, CorrelationIdWebFilter.class, PaymentRetryServiceImpl.class})
 @SuppressWarnings({"null", "removal"})
 class PaymentRetryControllerTest {
 
@@ -43,6 +46,9 @@ class PaymentRetryControllerTest {
 
     @MockBean
     private ReactiveKafkaProducerTemplate<String, String> producer;
+
+        @MockBean
+        private ReactiveJwtDecoder reactiveJwtDecoder;
 
     @Test
     void retry_shouldPublishOnce_andBeIdempotentByRetryRequestId() {
@@ -78,7 +84,7 @@ class PaymentRetryControllerTest {
         RetryPaymentRequest body = new RetryPaymentRequest(orderId, retryRequestId);
 
         // First call => ACCEPTED (202) and publish
-        webTestClient.post()
+        webTestClient.mutateWith(mockJwt()).post()
                 .uri("/payments/{orderId}/retry", orderId)
                 .header(CorrelationHeaders.X_CORRELATION_ID, UUID.randomUUID().toString())
                 .contentType(MediaType.APPLICATION_JSON)
@@ -90,7 +96,7 @@ class PaymentRetryControllerTest {
                 .jsonPath("$.retryRequestId").isEqualTo(retryRequestId.toString());
 
         // Second call with same retryRequestId => OK (200), no publish
-        webTestClient.post()
+        webTestClient.mutateWith(mockJwt()).post()
                 .uri("/payments/{orderId}/retry", orderId)
                 .header(CorrelationHeaders.X_CORRELATION_ID, UUID.randomUUID().toString())
                 .contentType(MediaType.APPLICATION_JSON)

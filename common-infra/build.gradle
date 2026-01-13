@@ -1,0 +1,36 @@
+plugins {
+    id "java-library"
+    id "io.spring.dependency-management" version "${springDependencyManagementVersion}"
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.boot:spring-boot-dependencies:${springBootVersion}"
+    }
+}
+
+dependencies {
+    api project(":common-events")
+
+    api "io.projectreactor:reactor-core"
+
+    // For AccessDeniedException used by the shared GlobalExceptionHandler.
+    api "org.springframework.security:spring-security-core"
+
+    // For WebFlux types used by the shared correlation-id filter.
+    api "org.springframework:spring-webflux"
+
+    // For Kafka consumer scaffolding helpers and DLQ record shaping.
+    api "org.springframework.kafka:spring-kafka"
+    api "io.projectreactor.kafka:reactor-kafka"
+    api "org.apache.kafka:kafka-clients"
+
+    testImplementation "org.junit.jupiter:junit-jupiter"
+    testImplementation "io.projectreactor:reactor-test"
+    testImplementation "org.mockito:mockito-core"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
