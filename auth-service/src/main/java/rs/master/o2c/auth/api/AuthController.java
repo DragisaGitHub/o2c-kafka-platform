@@ -1,36 +1,24 @@
 package rs.master.o2c.auth.api;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
-import reactor.core.publisher.Mono;
-import rs.master.o2c.auth.bff.BffCookieProperties;
-import rs.master.o2c.auth.bff.BffSessionService;
-import rs.master.o2c.auth.api.dto.LoginRequest;
-import rs.master.o2c.auth.api.dto.LoginResponse;
-import rs.master.o2c.auth.api.dto.VerifyMfaRequest;
-import rs.master.o2c.auth.api.dto.VerifyMfaResponse;
-import rs.master.o2c.auth.config.AuthJwtProperties;
-import rs.master.o2c.auth.service.JwtService;
-import rs.master.o2c.auth.service.LoginChallengeService;
-import rs.master.o2c.auth.service.TotpCryptoService;
-import rs.master.o2c.auth.service.TotpEnrollmentService;
-import rs.master.o2c.auth.service.TotpService;
-import rs.master.o2c.auth.service.TotpUserMfaService;
-import rs.master.o2c.auth.service.UserService;
-
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Mono;
+import rs.master.o2c.auth.api.dto.*;
+import rs.master.o2c.auth.bff.BffCookieProperties;
+import rs.master.o2c.auth.bff.BffSessionService;
+import rs.master.o2c.auth.config.AuthJwtProperties;
+import rs.master.o2c.auth.service.*;
 
 import javax.imageio.ImageIO;
 import java.io.ByteArrayOutputStream;
@@ -40,9 +28,8 @@ import java.time.Instant;
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/auth")
+@Slf4j
 public class AuthController {
-
-    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final UserService userService;
     private final LoginChallengeService loginChallengeService;
@@ -57,8 +44,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public Mono<ResponseEntity<LoginResponse>> login(
-            @Valid @RequestBody Mono<LoginRequest> body,
-            org.springframework.http.server.reactive.ServerHttpRequest request
+            @Valid @RequestBody Mono<LoginRequest> body
     ) {
         return body.flatMap(req -> userService.validateCredentials(req.username(), req.password())
                 .flatMap(u -> userMfa.loadTotpMfa(u.username())
@@ -80,11 +66,6 @@ public class AuthController {
                 )
                 .switchIfEmpty(Mono.just(ResponseEntity.status(401).build())));
     }
-
-    public record ConfirmTotpEnrollmentRequest(
-            @NotBlank String setupId,
-            @NotBlank String code
-    ) {}
 
     @GetMapping(value = "/mfa/totp/qr", produces = MediaType.IMAGE_PNG_VALUE)
     public Mono<ResponseEntity<byte[]>> totpQr(@RequestParam(name = "setupId") String setupId) {
@@ -116,11 +97,11 @@ public class AuthController {
 
             var session = enrollments.getValidSetup(setupId);
             if (session == null) {
-                return Mono.just(ResponseEntity.status(404).<VerifyMfaResponse>build());
+                return Mono.just(ResponseEntity.status(404).build());
             }
 
             if (!totp.isValidCode(session.secret(), code)) {
-                return Mono.just(ResponseEntity.status(401).<VerifyMfaResponse>build());
+                return Mono.just(ResponseEntity.status(401).build());
             }
 
             byte[] secretEnc = crypto.encrypt(session.secret());
@@ -158,7 +139,7 @@ public class AuthController {
         return body.flatMap(req -> {
             var ch = loginChallengeService.consume(req.challengeId());
             if (ch == null || ch.username() == null || ch.username().isBlank()) {
-                return Mono.just(ResponseEntity.status(401).<VerifyMfaResponse>build());
+                return Mono.just(ResponseEntity.status(401).build());
             }
 
             String code = req.pin();
@@ -193,9 +174,9 @@ public class AuthController {
                                         .header(HttpHeaders.SET_COOKIE, cookie.toString())
                                         .body(new VerifyMfaResponse("AUTHENTICATED", u.username())));
                             })
-                                .switchIfEmpty(Mono.just(ResponseEntity.status(401).<VerifyMfaResponse>build()))
+                                .switchIfEmpty(Mono.just(ResponseEntity.status(401).build()))
                     )
-                            .switchIfEmpty(Mono.just(ResponseEntity.status(401).<VerifyMfaResponse>build()));
+                            .switchIfEmpty(Mono.just(ResponseEntity.status(401).build()));
         });
     }
 

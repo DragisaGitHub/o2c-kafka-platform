@@ -148,7 +148,6 @@ public class AdminUserTotpController {
         try {
             QRCodeWriter writer = new QRCodeWriter();
             BitMatrix matrix = writer.encode(text, BarcodeFormat.QR_CODE, 256, 256);
-
             var image = MatrixToImageWriter.toBufferedImage(matrix);
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             ImageIO.write(image, "PNG", baos);
